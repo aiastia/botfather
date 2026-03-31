@@ -59,7 +59,7 @@ class Settings:
     AI_API_KEY: str = os.getenv("AI_API_KEY", "")
     AI_API_BASE_URL: str = os.getenv("AI_API_BASE_URL", "https://api.openai.com/v1")
     AI_MODEL: str = os.getenv("AI_MODEL", "gpt-3.5-turbo")
-    AI_TEMPERATURE: float = float(os.getenv("AI_TEMPERATURE", "0.7"))
+    AI_TEMPERATURE: float = float(os.getenv("AI_TEMPERATURE", "1.0"))
     AI_MAX_TOKENS: int = int(os.getenv("AI_MAX_TOKENS", "2000"))
 
     # ==================== 管理员配置 ====================

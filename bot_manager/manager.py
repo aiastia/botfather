@@ -8,7 +8,7 @@ import logging
 from typing import Dict, Optional
 
 from aiogram import Bot, Dispatcher
-from aiogram.types import Message
+from aiogram.types import BotCommand, Message
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 
@@ -48,6 +48,17 @@ class BotManager:
         self.db = db
         self._bots: Dict[int, ManagedBot] = {}
 
+    @staticmethod
+    async def _register_sub_bot_commands(bot: Bot):
+        """向 Telegram 注册子Bot的命令菜单（聊天框中显示的命令提示）"""
+        commands = [
+            BotCommand(command="start", description="查看欢迎信息"),
+            BotCommand(command="help", description="查看帮助"),
+            BotCommand(command="clear", description="清空对话记忆"),
+            BotCommand(command="config", description="查看当前配置"),
+        ]
+        await bot.set_my_commands(commands)
+
     def _create_plugin_chain(self) -> PluginChain:
         """创建默认插件链"""
         chain = PluginChain()
@@ -86,8 +97,15 @@ class BotManager:
                 await self._handle_message(message, _br, _bc, _pc, _mg)
 
             dp.message.register(message_handler)
+
+            # 注册子Bot命令菜单到 Telegram（非致命，失败不影响Bot运行）
+            try:
+                await self._register_sub_bot_commands(bot)
+            except Exception as cmd_err:
+                logger.warning(f"Bot @{bot_record.bot_username} 命令菜单注册失败: {cmd_err}")
+
             self._bots[bot_record.id] = managed
-            logger.info(f"Bot @{bot_record.bot_username} 注册成功")
+            logger.info(f"Bot @{bot_record.bot_username} 注册成功（命令菜单已注册）")
             return True
 
         except Exception as e:
