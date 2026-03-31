@@ -49,6 +49,7 @@ bottoken/
 │   ├── auth.py                 # 权限校验插件
 │   ├── command.py              # 命令处理插件
 │   ├── ai.py                   # AI 对话插件
+│   ├── forward.py              # 消息转发插件
 │   └── reply.py                # 统一回复插件
 │
 ├── handlers/
@@ -402,6 +403,16 @@ AI_API_BASE_URL=https://your-proxy.com/v1
 # 其他兼容服务（如 one-api、new-api 等）
 AI_API_BASE_URL=https://your-service.com/v1
 ```
+
+### AI 参数配置
+
+| 参数 | 默认值 | 说明 |
+|------|--------|------|
+| `AI_TEMPERATURE` | `1.0` | 生成温度，控制随机性。值越低越确定，越高越随机。**注意：某些模型只支持特定值** |
+| `AI_MAX_TOKENS` | `2000` | 单次回复最大 Token 数 |
+| `AI_MODEL` | `gpt-3.5-turbo` | 使用的 AI 模型名称 |
+
+> ⚠️ 部分中转服务的模型对 `temperature` 有严格限制（如只允许 `1`），如果遇到 400 错误请检查此项。
 
 ### 数据库配置
 
