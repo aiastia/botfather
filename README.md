@@ -188,7 +188,7 @@ Telegram 服务器
       │ HTTP 转发
       ▼
 ┌─────────────┐
-│  Bot 容器    │ ← 8080 端口，aiohttp 服务器
+│  Bot 容器    │ ← 8081 端口，aiohttp 服务器
 │ (aiohttp)   │
 └─────────────┘
 ```
@@ -217,9 +217,9 @@ BOT_MODE=webhook
 WEBHOOK_HOST=https://bot.yourdomain.com
 
 # 容器内部监听端口，Docker 会把这个端口暴露到宿主机
-# 你的 Nginx 反向代理应该指向 127.0.0.1:8080（即这个端口）
+# 你的 Nginx 反向代理应该指向 127.0.0.1:8081（即这个端口）
 # 一般不需要修改
-WEBHOOK_PORT=8080
+WEBHOOK_PORT=8081
 
 # Webhook 基础路径
 WEBHOOK_PATH=/webhook
@@ -236,7 +236,7 @@ AI_API_KEY=your_api_key
 ### 步骤二：启动容器
 
 ```bash
-# 使用 webhook 专用 compose 文件启动（暴露 8080 端口）
+# 使用 webhook 专用 compose 文件启动（暴露 8081 端口）
 docker-compose -f docker-compose.webhook.yml up -d
 
 # 查看日志
@@ -247,7 +247,7 @@ docker-compose -f docker-compose.webhook.yml logs -f
 
 ```
 设置主Bot webhook: https://bot.yourdomain.com/webhook/master
-🌐 Webhook 服务器已启动，监听端口 8080
+🌐 Webhook 服务器已启动，监听端口 8081
 🚀 平台已启动！共 1 个Bot正在运行 (webhook模式)
 ```
 
@@ -266,7 +266,7 @@ server {
 
     # Webhook 路径转发到容器
     location /webhook {
-        proxy_pass http://127.0.0.1:8080;
+        proxy_pass http://127.0.0.1:8081;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -276,12 +276,12 @@ server {
 
     # 健康检查（可选）
     location /health {
-        proxy_pass http://127.0.0.1:8080;
+        proxy_pass http://127.0.0.1:8081;
     }
 }
 ```
 
-> 💡 如果你使用 Caddy 或其他反向代理，只需将 `/webhook` 和 `/health` 路径转发到 `127.0.0.1:8080` 即可。
+> 💡 如果你使用 Caddy 或其他反向代理，只需将 `/webhook` 和 `/health` 路径转发到 `127.0.0.1:8081` 即可。
 
 ### 步骤四：验证
 
@@ -340,7 +340,7 @@ EOF
 systemctl enable tg-bot
 systemctl start tg-bot
 
-# 5. 在你的 Nginx 中配置反向代理，将 /webhook 转发到 127.0.0.1:8080
+# 5. 在你的 Nginx 中配置反向代理，将 /webhook 转发到 127.0.0.1:8081
 ```
 
 ---

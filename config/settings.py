@@ -22,7 +22,7 @@ class Settings:
 
     # ==================== Webhook配置 ====================
     WEBHOOK_HOST: str = os.getenv("WEBHOOK_HOST", "https://your-domain.com")
-    WEBHOOK_PORT: int = int(os.getenv("WEBHOOK_PORT", "8080"))  # 内部监听端口
+    WEBHOOK_PORT: int = int(os.getenv("WEBHOOK_PORT", "8081"))  # 内部监听端口
     WEBHOOK_PATH: str = os.getenv("WEBHOOK_PATH", "/webhook")
     WEBHOOK_SECRET: str = os.getenv("WEBHOOK_SECRET", "")  # Webhook 密钥，用于验证请求来源
 

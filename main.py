@@ -1,9 +1,8 @@
-"""
+ """
 TG Bot 托管 & 私聊助手平台
 主入口文件
 """
 import asyncio
-import hashlib
 import hmac
 import logging
 import sys
@@ -19,7 +18,7 @@ from config.settings import settings
 from database import create_database
 from database.base import DatabaseBase
 from bot_manager.manager import BotManager
-from handlers.master import router as master_router
+from handlers.master import router as master_router, register_bot_commands
 
 # 全局日志配置
 logging.basicConfig(
@@ -76,7 +75,10 @@ async def main():
     master_dp = Dispatcher()
     master_dp.include_router(master_router)
 
-    # 6. 启动模式
+    # 6. 注册 Telegram 命令菜单
+    await register_bot_commands(master_bot)
+
+    # 7. 启动模式
     if settings.BOT_MODE == "polling":
         await start_polling(master_bot, master_dp, bot_manager)
     elif settings.BOT_MODE == "webhook":

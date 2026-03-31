@@ -20,6 +20,24 @@ logger = logging.getLogger(__name__)
 router = Router()
 
 
+# ==================== 启动时注册命令菜单 ====================
+from aiogram.types import BotCommand
+
+async def register_bot_commands(bot: Bot):
+    """向 Telegram 注册 Bot 命令菜单（聊天框中显示的命令提示）"""
+    commands = [
+        BotCommand(command="add_bot", description="添加新 Bot"),
+        BotCommand(command="my_bots", description="查看我的 Bot"),
+        BotCommand(command="delete_bot", description="删除 Bot"),
+        BotCommand(command="start_bot", description="查看 Bot 启动状态"),
+        BotCommand(command="stop_bot", description="停止 Bot"),
+        BotCommand(command="config", description="查看/配置 Bot 参数"),
+        BotCommand(command="help", description="查看帮助"),
+    ]
+    await bot.set_my_commands(commands)
+    logger.info("已注册 Bot 命令菜单")
+
+
 # ==================== FSM 状态定义 ====================
 class AddBotStates(StatesGroup):
     waiting_for_token = State()
@@ -255,3 +273,38 @@ async def cmd_stop_bot(message: Message):
             stopped += 1
 
     await message.answer(f"⏹️ 已停止 {stopped} 个 Bot。")
+
+
+# ==================== /config 命令 ====================
+@router.message(Command("config"))
+async def cmd_config(message: Message):
+    """查看Bot配置"""
+    owner_id = message.from_user.id
+    mgr = get_bot_manager()
+    bots = await mgr.db.get_bots_by_owner(owner_id)
+
+    if not bots:
+        await message.answer("📭 你没有 Bot。使用 /add_bot 添加。")
+        return
+
+    text = "⚙️ **Bot 配置信息：**\n\n"
+    for bot in bots:
+        bot_config = await mgr.db.get_bot_config(bot.id)
+        if bot_config:
+            text += (
+                f"🤖 **@{bot.bot_username}**\n"
+                f"   AI: {'✅ 开启' if bot_config.ai_enabled else '❌ 关闭'}\n"
+                f"   模型: `{bot_config.ai_model}`\n"
+                f"   温度: `{bot_config.ai_temperature}`\n"
+                f"   最大Token: `{bot_config.ai_max_tokens}`\n"
+                f"   自定义API: {'✅' if bot_config.ai_api_base_url else '❌ 使用全局配置'}\n\n"
+            )
+        else:
+            text += f"🤖 @{bot.bot_username}: 暂无配置（使用全局默认）\n\n"
+
+    text += (
+        "💡 全局 AI 配置（.env）：\n"
+        f"   模型: `{settings.AI_MODEL}`\n"
+        f"   API: `{settings.AI_API_BASE_URL}`\n"
+    )
+    await message.answer(text)
