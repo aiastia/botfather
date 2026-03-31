@@ -46,11 +46,14 @@ class AddBotStates(StatesGroup):
 # ==================== 辅助函数 ====================
 def get_bot_manager():
     """获取 BotManager 实例（从 main.py 注入）"""
-    import main as main_module
-    mgr = main_module.bot_manager
-    if mgr is None:
-        logger.error("bot_manager 未初始化！请确保程序已正确启动。")
-    return mgr
+    import sys
+    main_module = sys.modules.get('__main__')
+    if main_module and hasattr(main_module, 'bot_manager'):
+        mgr = main_module.bot_manager
+        if mgr is not None:
+            return mgr
+    logger.error("bot_manager 未初始化！请确保程序已正确启动。")
+    return None
 
 
 # ==================== /start 命令 ====================
