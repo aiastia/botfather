@@ -6,8 +6,6 @@
 import logging
 from aiogram import Bot
 from aiogram.types import Message
-from aiogram.enums import ParseMode
-
 from .base import BasePlugin, PluginResult, PluginContext
 
 logger = logging.getLogger(__name__)
@@ -71,18 +69,15 @@ class ForwardPlugin(BasePlugin):
             )
 
             # 发送用户信息头
-            safe_name = user_name.replace("_", "\\_").replace("*", "\\*").replace("[", "\\[").replace("`", "\\`")
-            safe_username = username.replace("_", "\\_").replace("*", "\\*")
             header = (
-                f"📨 来自 @{safe_username} (ID: `{user_id}`)\n"
-                f"👤 {safe_name}\n"
+                f"📨 来自 @{username} (ID: <code>{user_id}</code>)\n"
+                f"👤 {user_name}\n"
                 f"───────────────\n"
                 f"💬 回复此消息即可回复该用户"
             )
             info_msg = await bot.send_message(
                 chat_id=owner_id,
                 text=header,
-                parse_mode=ParseMode.MARKDOWN,
                 reply_to_message_id=forwarded.message_id,
             )
 
@@ -142,11 +137,9 @@ class ForwardPlugin(BasePlugin):
             )
 
             # 通知主人发送成功
-            safe_name = user_name.replace("_", "\\_").replace("*", "\\*")
-            safe_uname = username.replace("_", "\\_").replace("*", "\\*")
             await bot.send_message(
                 chat_id=owner_id,
-                text=f"✅ 已发送给 {safe_name} (@{safe_uname})",
+                text=f"✅ 已发送给 {user_name} (@{username})",
             )
 
         except Exception as e:

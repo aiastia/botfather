@@ -67,7 +67,7 @@ async def main():
     # 5. 创建主Bot
     master_bot = Bot(
         token=settings.MASTER_BOT_TOKEN,
-        default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN),
+        default=DefaultBotProperties(parse_mode=ParseMode.HTML),
     )
     master_dp = Dispatcher()
     master_dp.include_router(master_router)

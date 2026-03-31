@@ -33,9 +33,9 @@ class CommandPlugin(BasePlugin):
 
         # /start 命令
         if command == "/start":
-            safe_name = bot_record.bot_firstname.replace("_", "\\_")
+            safe_name = bot_record.bot_firstname
             welcome_text = (
-                f"👋 你好！我是 **{safe_name}**\n\n"
+                f"👋 你好！我是 <b>{safe_name}</b>\n\n"
                 f"我是 AI 私聊助手，你可以直接给我发消息。\n\n"
                 f"📝 可用命令：\n"
                 f"/start - 查看欢迎信息\n"
@@ -48,7 +48,7 @@ class CommandPlugin(BasePlugin):
         # /help 命令
         elif command == "/help":
             help_text = (
-                "📖 **使用帮助**\n\n"
+                "📖 <b>使用帮助</b>\n\n"
                 "直接给我发送任何消息，我会使用 AI 回复你。\n"
                 "同时你的消息会转发给 Bot 主人。\n\n"
                 "📌 命令列表：\n"
@@ -75,8 +75,8 @@ class CommandPlugin(BasePlugin):
             bot_config = context.bot_config
             if bot_config:
                 config_text = (
-                    "⚙️ **当前配置**\n\n"
-                    f"🤖 AI 模型: `{bot_config.ai_model}`\n"
+                    "⚙️ <b>当前配置</b>\n\n"
+                    f"🤖 AI 模型: <code>{bot_config.ai_model}</code>\n"
                     f"🌡️ 温度: {bot_config.ai_temperature}\n"
                     f"📏 最大Token: {bot_config.ai_max_tokens}\n"
                     f"💡 AI 状态: {'✅ 开启' if bot_config.ai_enabled else '❌ 关闭'}\n"

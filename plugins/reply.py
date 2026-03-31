@@ -42,14 +42,10 @@ class ReplyPlugin(BasePlugin):
             return PluginResult()
 
         try:
-            await message.answer(reply_text, parse_mode="Markdown")
+            # AI 回复内容不可控，使用纯文本发送避免 Markdown/HTML 解析错误
+            await message.answer(reply_text)
         except Exception as e:
-            # Markdown 解析失败时用纯文本重发（必须显式关闭 parse_mode）
-            logger.warning(f"Markdown 发送失败，切换纯文本: {e}")
-            try:
-                await message.answer(reply_text, parse_mode=None)
-            except Exception as e2:
-                logger.error(f"消息发送失败: {e2}")
+            logger.error(f"消息发送失败: {e}")
 
         # 保存对话记录到数据库
         if self.db and context.bot_record:

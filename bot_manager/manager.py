@@ -80,7 +80,7 @@ class BotManager:
         try:
             bot = Bot(
                 token=bot_record.bot_token,
-                default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN),
+                default=DefaultBotProperties(parse_mode=ParseMode.HTML),
             )
             dp = Dispatcher()
             plugin_chain = self._create_plugin_chain()

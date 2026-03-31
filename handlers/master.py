@@ -64,10 +64,10 @@ def get_bot_manager():
 async def cmd_start(message: Message):
     """初始化 / 欢迎信息"""
     text = (
-        "👋 **欢迎使用 TG Bot 托管平台！**\n\n"
+        "👋 <b>欢迎使用 TG Bot 托管平台！</b>\n\n"
         "我可以帮你管理多个 Telegram Bot，"
-        "让每个 Bot 都变成你的 **AI 私聊助手**。\n\n"
-        "📌 **快速开始：**\n"
+        "让每个 Bot 都变成你的 <b>AI 私聊助手</b>。\n\n"
+        "📌 <b>快速开始：</b>\n"
         "/add_bot - 添加一个新 Bot\n"
         "/my_bots - 查看我的 Bot 列表\n"
         "/help - 查看完整帮助\n"
@@ -80,19 +80,19 @@ async def cmd_start(message: Message):
 async def cmd_help(message: Message):
     """帮助信息"""
     text = (
-        "📖 **使用帮助**\n\n"
-        "**Bot 管理：**\n"
+        "📖 <b>使用帮助</b>\n\n"
+        "<b>Bot 管理：</b>\n"
         "/add_bot - 添加新 Bot\n"
         "/my_bots - 查看我的 Bot\n"
         "/delete_bot - 删除 Bot\n"
         "/start_bot - 查看 Bot 状态\n"
         "/stop_bot - 停止 Bot\n\n"
-        "**AI 配置（每个Bot可独立设置）：**\n"
+        "<b>AI 配置（每个Bot可独立设置）：</b>\n"
         "/config - 查看 Bot 配置\n"
         "/setkey - 设置 AI API Key\n"
         "/setapi - 设置 AI API 地址\n"
         "/setmodel - 设置 AI 模型\n\n"
-        "**💡 提示：**\n"
+        "<b>💡 提示：</b>\n"
         "1. 先在 @BotFather 创建一个 Bot\n"
         "2. 使用 /add_bot 将其添加到平台\n"
         "3. 用户发给 Bot 的消息会自动转发给你\n"
@@ -107,7 +107,7 @@ async def cmd_add_bot(message: Message, state: FSMContext):
     """添加 Bot - 第一步：请求Token"""
     await message.answer(
         "🔑 请发送你的 Bot Token：\n\n"
-        "（从 @BotFather 获取，格式如 `123456:ABC-DEF...`）\n\n"
+        "（从 @BotFather 获取，格式如 <code>123456:ABC-DEF...</code>）\n\n"
         "发送 /cancel 取消操作。",
     )
     await state.set_state(AddBotStates.waiting_for_token)
@@ -138,7 +138,7 @@ async def process_add_bot_token(message: Message, state: FSMContext):
 
     test_bot = Bot(
         token=token,
-        default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN),
+        default=DefaultBotProperties(parse_mode=ParseMode.HTML),
     )
     try:
         bot_info = await test_bot.get_me()
@@ -189,14 +189,12 @@ async def process_add_bot_token(message: Message, state: FSMContext):
     if settings.BOT_MODE == "webhook":
         await mgr.setup_webhook_for_bot(record.id)
 
-    safe_username = (bot_info.username or "").replace("_", "\\_")
-    safe_name = bot_info.first_name.replace("_", "\\_")
     await message.answer(
         f"✅ Bot 添加成功！\n\n"
-        f"🤖 名称：{safe_name}\n"
-        f"📌 用户名：@{safe_username}\n"
-        f"🆔 Bot ID：`{bot_info.id}`\n\n"
-        f"现在你可以直接向 @{safe_username} 发送消息来使用 AI 助手了！",
+        f"🤖 名称：{bot_info.first_name}\n"
+        f"📌 用户名：@{bot_info.username}\n"
+        f"🆔 Bot ID：<code>{bot_info.id}</code>\n\n"
+        f"现在你可以直接向 @{bot_info.username} 发送消息来使用 AI 助手了！",
     )
     await state.clear()
     logger.info(f"用户 {owner_id} 添加了 Bot @{bot_info.username}")
@@ -214,14 +212,12 @@ async def cmd_my_bots(message: Message):
         await message.answer("📭 你还没有添加任何 Bot。\n\n使用 /add_bot 开始添加！")
         return
 
-    text = "📋 **我的 Bot 列表：**\n\n"
+    text = "📋 <b>我的 Bot 列表：</b>\n\n"
     for i, bot in enumerate(bots, 1):
         status_emoji = "🟢" if bot.status == "active" else "🔴"
-        safe_uname = bot.bot_username.replace("_", "\\_")
-        safe_fname = bot.bot_firstname.replace("_", "\\_")
         text += (
-            f"{i}. {status_emoji} **{safe_fname}**\n"
-            f"   @{safe_uname} | ID: `{bot.id}`\n\n"
+            f"{i}. {status_emoji} <b>{bot.bot_firstname}</b>\n"
+            f"   @{bot.bot_username} | ID: <code>{bot.id}</code>\n\n"
         )
 
     text += f"共 {len(bots)} 个 Bot"
@@ -240,11 +236,9 @@ async def cmd_delete_bot(message: Message, state: FSMContext):
         await message.answer("📭 你没有可删除的 Bot。")
         return
 
-    text = "🗑️ **请回复要删除的 Bot 编号：**\n\n"
+    text = "🗑️ <b>请回复要删除的 Bot 编号：</b>\n\n"
     for i, bot in enumerate(bots, 1):
-        safe_uname = bot.bot_username.replace("_", "\\_")
-        safe_fname = bot.bot_firstname.replace("_", "\\_")
-        text += f"{i}. @{safe_uname} ({safe_fname})\n"
+        text += f"{i}. @{bot.bot_username} ({bot.bot_firstname})\n"
 
     text += "\n发送 /cancel 取消"
     await message.answer(text)
@@ -272,12 +266,11 @@ async def cmd_start_bot(message: Message):
         await message.answer("📭 你没有 Bot。使用 /add_bot 添加。")
         return
 
-    text = "🚀 **Bot 启动状态：**\n\n"
+    text = "🚀 <b>Bot 启动状态：</b>\n\n"
     for bot in bots:
         managed = mgr.get_all_bots().get(bot.id)
         status = "🟢 运行中" if managed else "🔴 未运行"
-        safe_uname = bot.bot_username.replace("_", "\\_")
-        text += f"- @{safe_uname}: {status}\n"
+        text += f"- @{bot.bot_username}: {status}\n"
 
     text += "\n💡 添加的 Bot 会自动启动，如需重启请先 /stop_bot 再重新添加。"
     await message.answer(text)
@@ -311,26 +304,25 @@ async def cmd_config(message: Message):
         await message.answer("📭 你没有 Bot。使用 /add_bot 添加。")
         return
 
-    text = "⚙️ **Bot 配置信息：**\n\n"
+    text = "⚙️ <b>Bot 配置信息：</b>\n\n"
     for bot in bots:
         bot_config = await mgr.db.get_bot_config(bot.id)
-        safe_uname = bot.bot_username.replace("_", "\\_")
         if bot_config:
             text += (
-                f"🤖 **@{safe_uname}**\n"
+                f"🤖 <b>@{bot.bot_username}</b>\n"
                 f"   AI: {'✅ 开启' if bot_config.ai_enabled else '❌ 关闭'}\n"
-                f"   模型: `{bot_config.ai_model}`\n"
-                f"   温度: `{bot_config.ai_temperature}`\n"
-                f"   最大Token: `{bot_config.ai_max_tokens}`\n"
+                f"   模型: <code>{bot_config.ai_model}</code>\n"
+                f"   温度: <code>{bot_config.ai_temperature}</code>\n"
+                f"   最大Token: <code>{bot_config.ai_max_tokens}</code>\n"
                 f"   自定义API: {'✅' if bot_config.ai_api_base_url else '❌ 使用全局配置'}\n\n"
             )
         else:
-            text += f"🤖 @{safe_uname}: 暂无配置（使用全局默认）\n\n"
+            text += f"🤖 @{bot.bot_username}: 暂无配置（使用全局默认）\n\n"
 
     text += (
         "💡 全局 AI 配置（.env）：\n"
-        f"   模型: `{settings.AI_MODEL}`\n"
-        f"   API: `{settings.AI_API_BASE_URL}`\n"
+        f"   模型: <code>{settings.AI_MODEL}</code>\n"
+        f"   API: <code>{settings.AI_API_BASE_URL}</code>\n"
     )
     await message.answer(text)
 
@@ -361,15 +353,14 @@ async def cmd_setkey(message: Message, state: FSMContext):
         await state.set_data({"config_bot_id": bots[0].id})
         await message.answer(
             f"🔑 请发送你的 OpenAI API Key：\n\n"
-            f"（将被设置给 @{bots[0].bot_username.replace('_', chr(92) + chr(95))}）\n\n"
+            f"（将被设置给 @{bots[0].bot_username}）\n\n"
             f"发送 /cancel 取消"
         )
         await state.set_state(ConfigStates.waiting_for_api_key)
     else:
         text = "🤖 请选择要配置的 Bot 编号：\n\n"
         for i, bot in enumerate(bots, 1):
-            safe_uname = bot.bot_username.replace("_", "\\_")
-            text += f"{i}. @{safe_uname}\n"
+            text += f"{i}. @{bot.bot_username}\n"
         text += "\n发送 /cancel 取消"
         await message.answer(text)
         await state.set_data({
@@ -394,17 +385,16 @@ async def cmd_setapi(message: Message, state: FSMContext):
     if len(bots) == 1:
         await state.set_data({"config_bot_id": bots[0].id})
         await message.answer(
-            f"🌐 请发送 API Base URL：\n\n"
-            f"例如：`https://api.openai.com/v1`\n"
-            f"或中转地址：`https://your-proxy.com/v1`\n\n"
+            "🌐 请发送 API Base URL：\n\n"
+            f"例如：<code>https://api.openai.com/v1</code>\n"
+            f"或中转地址：<code>https://your-proxy.com/v1</code>\n\n"
             f"发送 /cancel 取消"
         )
         await state.set_state(ConfigStates.waiting_for_api_url)
     else:
         text = "🤖 请选择要配置的 Bot 编号：\n\n"
         for i, bot in enumerate(bots, 1):
-            safe_uname = bot.bot_username.replace("_", "\\_")
-            text += f"{i}. @{safe_uname}\n"
+            text += f"{i}. @{bot.bot_username}\n"
         text += "\n发送 /cancel 取消"
         await message.answer(text)
         await state.set_data({
@@ -428,16 +418,15 @@ async def cmd_setmodel(message: Message, state: FSMContext):
     if len(bots) == 1:
         await state.set_data({"config_bot_id": bots[0].id})
         await message.answer(
-            f"🧠 请发送 AI 模型名称：\n\n"
-            f"例如：`gpt-3.5-turbo`、`gpt-4`、`gpt-4o`\n\n"
-            f"发送 /cancel 取消"
+            "🧠 请发送 AI 模型名称：\n\n"
+            "例如：<code>gpt-3.5-turbo</code>、<code>gpt-4</code>、<code>gpt-4o</code>\n\n"
+            "发送 /cancel 取消"
         )
         await state.set_state(ConfigStates.waiting_for_model)
     else:
         text = "🤖 请选择要配置的 Bot 编号：\n\n"
         for i, bot in enumerate(bots, 1):
-            safe_uname = bot.bot_username.replace("_", "\\_")
-            text += f"{i}. @{safe_uname}\n"
+            text += f"{i}. @{bot.bot_username}\n"
         text += "\n发送 /cancel 取消"
         await message.answer(text)
         await state.set_data({
@@ -471,14 +460,14 @@ async def process_bot_select(message: Message, state: FSMContext):
     elif next_action == "setapi":
         await message.answer(
             "🌐 请发送 API Base URL：\n\n"
-            "例如：`https://api.openai.com/v1`\n\n"
+            "例如：<code>https://api.openai.com/v1</code>\n\n"
             "发送 /cancel 取消"
         )
         await state.set_state(ConfigStates.waiting_for_api_url)
     elif next_action == "setmodel":
         await message.answer(
             "🧠 请发送 AI 模型名称：\n\n"
-            "例如：`gpt-4`、`gpt-3.5-turbo`\n\n"
+            "例如：<code>gpt-4</code>、<code>gpt-3.5-turbo</code>\n\n"
             "发送 /cancel 取消"
         )
         await state.set_state(ConfigStates.waiting_for_model)
@@ -534,7 +523,7 @@ async def process_api_url(message: Message, state: FSMContext):
         bot_config.ai_api_base_url = url
         await mgr.db.update_bot_config(bot_config)
         _clear_ai_client_cache()
-        await message.answer(f"✅ API URL 已更新为：`{url}`")
+        await message.answer(f"✅ API URL 已更新为：<code>{url}</code>")
     else:
         await message.answer("❌ Bot 配置不存在。")
 
@@ -561,7 +550,7 @@ async def process_model(message: Message, state: FSMContext):
     if bot_config:
         bot_config.ai_model = model
         await mgr.db.update_bot_config(bot_config)
-        await message.answer(f"✅ AI 模型已更新为：`{model}`")
+        await message.answer(f"✅ AI 模型已更新为：<code>{model}</code>")
     else:
         await message.answer("❌ Bot 配置不存在。")
 
@@ -605,7 +594,7 @@ async def cmd_admin(message: Message):
         "/admin_toggle_ai <bot_id> - 开关Bot的AI\n"
         "/admin_set_key <bot_id> <key> - 为Bot设置API Key\n"
     )
-    await message.answer(text, parse_mode=None)
+    await message.answer(text)
 
 
 @router.message(Command("admin_bots"))
@@ -631,7 +620,7 @@ async def cmd_admin_bots(message: Message):
             f"@{bot.bot_username} (Owner: {bot.owner_id})\n"
         )
 
-    await message.answer(text, parse_mode=None)
+    await message.answer(text)
 
 
 @router.message(Command("admin_toggle_ai"))
@@ -660,4 +649,4 @@ async def cmd_admin_toggle_ai(message: Message):
     bot_config.ai_enabled = not bot_config.ai_enabled
     await mgr.db.update_bot_config(bot_config)
     status = "✅ 开启" if bot_config.ai_enabled else "❌ 关闭"
-    await message.answer(f"Bot ID {bot_id} 的 AI 已{status}", parse_mode=None)
+    await message.answer(f"Bot ID {bot_id} 的 AI 已{status}")
