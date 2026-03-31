@@ -71,9 +71,10 @@ class ForwardPlugin(BasePlugin):
             )
 
             # 发送用户信息头
-            safe_name = user_name.replace("_", "\\_")
+            safe_name = user_name.replace("_", "\\_").replace("*", "\\*").replace("[", "\\[").replace("`", "\\`")
+            safe_username = username.replace("_", "\\_").replace("*", "\\*")
             header = (
-                f"📨 **来自 @{username}** (ID: `{user_id}`)\n"
+                f"📨 来自 @{safe_username} (ID: `{user_id}`)\n"
                 f"👤 {safe_name}\n"
                 f"───────────────\n"
                 f"💬 回复此消息即可回复该用户"
@@ -141,11 +142,11 @@ class ForwardPlugin(BasePlugin):
             )
 
             # 通知主人发送成功
-            safe_name = user_name.replace("_", "\\_")
+            safe_name = user_name.replace("_", "\\_").replace("*", "\\*")
+            safe_uname = username.replace("_", "\\_").replace("*", "\\*")
             await bot.send_message(
                 chat_id=owner_id,
-                text=f"✅ 已发送给 {safe_name} (@{username})",
-                parse_mode=ParseMode.MARKDOWN,
+                text=f"✅ 已发送给 {safe_name} (@{safe_uname})",
             )
 
         except Exception as e:

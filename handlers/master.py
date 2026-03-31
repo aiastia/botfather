@@ -598,14 +598,14 @@ async def cmd_admin(message: Message):
     total_users = len(set(b.owner_id for b in all_bots))
 
     text = (
-        "🔧 **管理员面板**\n\n"
+        "🔧 管理员面板\n\n"
         f"📊 统计：{total_bots} 个Bot / {total_users} 个用户\n\n"
-        "**命令：**\n"
+        "命令：\n"
         "/admin_bots - 查看所有Bot列表\n"
         "/admin_toggle_ai <bot_id> - 开关Bot的AI\n"
         "/admin_set_key <bot_id> <key> - 为Bot设置API Key\n"
     )
-    await message.answer(text)
+    await message.answer(text, parse_mode=None)
 
 
 @router.message(Command("admin_bots"))
@@ -621,18 +621,17 @@ async def cmd_admin_bots(message: Message):
         await message.answer("📭 没有任何Bot。")
         return
 
-    text = "📋 **所有 Bot 列表：**\n\n"
+    text = "📋 所有 Bot 列表：\n\n"
     for bot in all_bots:
         bot_config = await mgr.db.get_bot_config(bot.id)
         ai_status = "✅" if (bot_config and bot_config.ai_enabled) else "❌"
         custom_key = "🔑" if (bot_config and bot_config.ai_api_key) else "🌐"
-        safe_uname = bot.bot_username.replace("_", "\\_")
         text += (
             f"ID:{bot.id} | {ai_status}AI | {custom_key} | "
-            f"@{safe_uname} (Owner: `{bot.owner_id}`)\n"
+            f"@{bot.bot_username} (Owner: {bot.owner_id})\n"
         )
 
-    await message.answer(text)
+    await message.answer(text, parse_mode=None)
 
 
 @router.message(Command("admin_toggle_ai"))
@@ -661,4 +660,4 @@ async def cmd_admin_toggle_ai(message: Message):
     bot_config.ai_enabled = not bot_config.ai_enabled
     await mgr.db.update_bot_config(bot_config)
     status = "✅ 开启" if bot_config.ai_enabled else "❌ 关闭"
-    await message.answer(f"Bot ID {bot_id} 的 AI 已{status}")
+    await message.answer(f"Bot ID {bot_id} 的 AI 已{status}", parse_mode=None)
