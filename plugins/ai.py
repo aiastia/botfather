@@ -44,16 +44,17 @@ class AIPlugin(BasePlugin):
         if not message.text or message.text.startswith("/"):
             return PluginResult()
 
+        # 只有 Bot 主人才能使用 AI，普通用户消息不进入 AI
+        if not context.get("is_owner", False):
+            return PluginResult()
+
         bot_config = context.bot_config
         bot_record = context.bot_record
 
         # 检查 AI 是否启用
         if not bot_config or not bot_config.ai_enabled:
-            return PluginResult(
-                stop=True,
-                reply_text="⚠️ AI 功能未启用。请在主Bot中使用 /config 命令开启。",
-                handled=True,
-            )
+            # AI 未启用，静默跳过（不向用户报错）
+            return PluginResult()
 
         # 获取 API 配置（Bot专属 > 全局配置）
         api_key = bot_config.ai_api_key or settings.AI_API_KEY
@@ -64,11 +65,9 @@ class AIPlugin(BasePlugin):
         system_prompt = bot_config.ai_system_prompt or "你是一个友好的AI助手。"
 
         if not api_key or api_key.startswith("your_") or len(api_key) < 10:
-            return PluginResult(
-                stop=True,
-                reply_text="❌ AI API Key 未配置或无效。\n请联系管理员在 .env 中设置有效的 AI_API_KEY。",
-                handled=True,
-            )
+            # API Key 无效，静默跳过（配置问题不应暴露给用户）
+            logger.warning(f"Bot {bot_record.id} API Key 未配置，跳过 AI 回复")
+            return PluginResult()
 
         try:
             client = self._get_client(api_key, api_base)
@@ -105,8 +104,5 @@ class AIPlugin(BasePlugin):
 
         except Exception as e:
             logger.error(f"AI 调用失败: {e}", exc_info=True)
-            return PluginResult(
-                stop=True,
-                reply_text=f"❌ AI 调用失败：{str(e)[:100]}",
-                handled=True,
-            )
+            # AI 调用失败不阻断，让转发功能正常工作
+            return PluginResult()
