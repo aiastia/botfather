@@ -20,6 +20,7 @@ from plugins.auth import AuthPlugin
 from plugins.command import CommandPlugin
 from plugins.ai import AIPlugin
 from plugins.reply import ReplyPlugin
+from plugins.forward import ForwardPlugin
 
 logger = logging.getLogger(__name__)
 
@@ -50,10 +51,11 @@ class BotManager:
     def _create_plugin_chain(self) -> PluginChain:
         """创建默认插件链"""
         chain = PluginChain()
-        chain.register(AuthPlugin())
-        chain.register(CommandPlugin())
-        chain.register(AIPlugin())
-        reply_plugin = ReplyPlugin()
+        chain.register(AuthPlugin())       # 5  - 权限校验
+        chain.register(CommandPlugin())     # 10 - 命令处理
+        chain.register(ForwardPlugin())     # 30 - 消息转发给Bot主人
+        chain.register(AIPlugin())          # 50 - AI对话
+        reply_plugin = ReplyPlugin()        # 99 - 统一回复
         reply_plugin.db = self.db
         chain.register(reply_plugin)
         return chain

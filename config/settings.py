@@ -62,6 +62,17 @@ class Settings:
     AI_TEMPERATURE: float = float(os.getenv("AI_TEMPERATURE", "0.7"))
     AI_MAX_TOKENS: int = int(os.getenv("AI_MAX_TOKENS", "2000"))
 
+    # ==================== 管理员配置 ====================
+    # 管理员 Telegram User ID（逗号分隔，拥有全局管理权限）
+    ADMIN_IDS: str = os.getenv("ADMIN_IDS", "")
+
+    @property
+    def admin_id_list(self) -> list:
+        """获取管理员ID列表"""
+        if not self.ADMIN_IDS:
+            return []
+        return [int(x.strip()) for x in self.ADMIN_IDS.split(",") if x.strip().isdigit()]
+
     # ==================== 日志配置 ====================
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
 

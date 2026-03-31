@@ -33,9 +33,10 @@ class CommandPlugin(BasePlugin):
 
         # /start 命令
         if command == "/start":
+            safe_name = bot_record.bot_firstname.replace("_", "\\_")
             welcome_text = (
-                f"👋 你好！我是 **{bot_record.bot_firstname}**\n\n"
-                f"我是你的私聊 AI 助手，你可以直接给我发消息，我会回复你。\n\n"
+                f"👋 你好！我是 **{safe_name}**\n\n"
+                f"我是 AI 私聊助手，你可以直接给我发消息。\n\n"
                 f"📝 可用命令：\n"
                 f"/start - 查看欢迎信息\n"
                 f"/help - 查看帮助\n"
@@ -48,12 +49,14 @@ class CommandPlugin(BasePlugin):
         elif command == "/help":
             help_text = (
                 "📖 **使用帮助**\n\n"
-                "直接给我发送任何消息，我会使用 AI 回复你。\n\n"
+                "直接给我发送任何消息，我会使用 AI 回复你。\n"
+                "同时你的消息会转发给 Bot 主人。\n\n"
                 "📌 命令列表：\n"
                 "/start - 欢迎信息\n"
                 "/help - 帮助信息\n"
                 "/clear - 清空对话记忆\n"
-                "/config - 查看配置\n"
+                "/config - 查看配置\n\n"
+                "💡 Bot 主人可通过主控Bot配置 AI 参数。"
             )
             return PluginResult(stop=True, reply_text=help_text, handled=True)
 

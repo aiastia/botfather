@@ -31,7 +31,10 @@ async def register_bot_commands(bot: Bot):
         BotCommand(command="delete_bot", description="删除 Bot"),
         BotCommand(command="start_bot", description="查看 Bot 启动状态"),
         BotCommand(command="stop_bot", description="停止 Bot"),
-        BotCommand(command="config", description="查看/配置 Bot 参数"),
+        BotCommand(command="config", description="查看 Bot 配置"),
+        BotCommand(command="setkey", description="设置 AI API Key"),
+        BotCommand(command="setapi", description="设置 AI API URL"),
+        BotCommand(command="setmodel", description="设置 AI 模型"),
         BotCommand(command="help", description="查看帮助"),
     ]
     await bot.set_my_commands(commands)
@@ -81,15 +84,19 @@ async def cmd_help(message: Message):
         "**Bot 管理：**\n"
         "/add_bot - 添加新 Bot\n"
         "/my_bots - 查看我的 Bot\n"
-        "/delete_bot - 删除 Bot\n\n"
-        "**Bot 配置：**\n"
-        "/config - 配置 Bot 参数\n"
-        "/start_bot - 启动 Bot\n"
+        "/delete_bot - 删除 Bot\n"
+        "/start_bot - 查看 Bot 状态\n"
         "/stop_bot - 停止 Bot\n\n"
+        "**AI 配置（每个Bot可独立设置）：**\n"
+        "/config - 查看 Bot 配置\n"
+        "/setkey - 设置 AI API Key\n"
+        "/setapi - 设置 AI API 地址\n"
+        "/setmodel - 设置 AI 模型\n\n"
         "**💡 提示：**\n"
         "1. 先在 @BotFather 创建一个 Bot\n"
         "2. 使用 /add_bot 将其添加到平台\n"
-        "3. 向你的 Bot 发消息即可开始对话\n"
+        "3. 用户发给 Bot 的消息会自动转发给你\n"
+        "4. 你可以直接回复转发消息来回复用户\n"
     )
     await message.answer(text)
 
@@ -326,3 +333,332 @@ async def cmd_config(message: Message):
         f"   API: `{settings.AI_API_BASE_URL}`\n"
     )
     await message.answer(text)
+
+
+# ==================== 用户 AI 配置命令 ====================
+
+class ConfigStates(StatesGroup):
+    """AI 配置状态"""
+    waiting_for_bot_select = State()
+    waiting_for_api_key = State()
+    waiting_for_api_url = State()
+    waiting_for_model = State()
+
+
+@router.message(Command("setkey"))
+async def cmd_setkey(message: Message, state: FSMContext):
+    """设置自己Bot的 AI API Key"""
+    owner_id = message.from_user.id
+    mgr = get_bot_manager()
+    bots = await mgr.db.get_bots_by_owner(owner_id)
+
+    if not bots:
+        await message.answer("📭 你没有 Bot。使用 /add_bot 添加。")
+        return
+
+    if len(bots) == 1:
+        # 只有一个Bot，直接跳到输入Key
+        await state.set_data({"config_bot_id": bots[0].id})
+        await message.answer(
+            f"🔑 请发送你的 OpenAI API Key：\n\n"
+            f"（将被设置给 @{bots[0].bot_username.replace('_', chr(92) + chr(95))}）\n\n"
+            f"发送 /cancel 取消"
+        )
+        await state.set_state(ConfigStates.waiting_for_api_key)
+    else:
+        text = "🤖 请选择要配置的 Bot 编号：\n\n"
+        for i, bot in enumerate(bots, 1):
+            safe_uname = bot.bot_username.replace("_", "\\_")
+            text += f"{i}. @{safe_uname}\n"
+        text += "\n发送 /cancel 取消"
+        await message.answer(text)
+        await state.set_data({
+            "config_bot_list": [b.id for b in bots],
+        })
+        await state.set_state(ConfigStates.waiting_for_bot_select)
+        # 标记下一步是 setkey
+        await state.update_data(next_action="setkey")
+
+
+@router.message(Command("setapi"))
+async def cmd_setapi(message: Message, state: FSMContext):
+    """设置自己Bot的 AI API Base URL"""
+    owner_id = message.from_user.id
+    mgr = get_bot_manager()
+    bots = await mgr.db.get_bots_by_owner(owner_id)
+
+    if not bots:
+        await message.answer("📭 你没有 Bot。使用 /add_bot 添加。")
+        return
+
+    if len(bots) == 1:
+        await state.set_data({"config_bot_id": bots[0].id})
+        await message.answer(
+            f"🌐 请发送 API Base URL：\n\n"
+            f"例如：`https://api.openai.com/v1`\n"
+            f"或中转地址：`https://your-proxy.com/v1`\n\n"
+            f"发送 /cancel 取消"
+        )
+        await state.set_state(ConfigStates.waiting_for_api_url)
+    else:
+        text = "🤖 请选择要配置的 Bot 编号：\n\n"
+        for i, bot in enumerate(bots, 1):
+            safe_uname = bot.bot_username.replace("_", "\\_")
+            text += f"{i}. @{safe_uname}\n"
+        text += "\n发送 /cancel 取消"
+        await message.answer(text)
+        await state.set_data({
+            "config_bot_list": [b.id for b in bots],
+            "next_action": "setapi",
+        })
+        await state.set_state(ConfigStates.waiting_for_bot_select)
+
+
+@router.message(Command("setmodel"))
+async def cmd_setmodel(message: Message, state: FSMContext):
+    """设置自己Bot的 AI 模型"""
+    owner_id = message.from_user.id
+    mgr = get_bot_manager()
+    bots = await mgr.db.get_bots_by_owner(owner_id)
+
+    if not bots:
+        await message.answer("📭 你没有 Bot。使用 /add_bot 添加。")
+        return
+
+    if len(bots) == 1:
+        await state.set_data({"config_bot_id": bots[0].id})
+        await message.answer(
+            f"🧠 请发送 AI 模型名称：\n\n"
+            f"例如：`gpt-3.5-turbo`、`gpt-4`、`gpt-4o`\n\n"
+            f"发送 /cancel 取消"
+        )
+        await state.set_state(ConfigStates.waiting_for_model)
+    else:
+        text = "🤖 请选择要配置的 Bot 编号：\n\n"
+        for i, bot in enumerate(bots, 1):
+            safe_uname = bot.bot_username.replace("_", "\\_")
+            text += f"{i}. @{safe_uname}\n"
+        text += "\n发送 /cancel 取消"
+        await message.answer(text)
+        await state.set_data({
+            "config_bot_list": [b.id for b in bots],
+            "next_action": "setmodel",
+        })
+        await state.set_state(ConfigStates.waiting_for_bot_select)
+
+
+@router.message(ConfigStates.waiting_for_bot_select)
+async def process_bot_select(message: Message, state: FSMContext):
+    """处理Bot选择"""
+    data = await state.get_data()
+    bot_list = data.get("config_bot_list", [])
+    next_action = data.get("next_action", "")
+
+    try:
+        idx = int(message.text.strip()) - 1
+        if idx < 0 or idx >= len(bot_list):
+            raise ValueError
+    except (ValueError, TypeError):
+        await message.answer("❌ 请输入有效的编号。")
+        return
+
+    selected_bot_id = bot_list[idx]
+    await state.update_data(config_bot_id=selected_bot_id)
+
+    if next_action == "setkey":
+        await message.answer("🔑 请发送你的 OpenAI API Key：\n\n发送 /cancel 取消")
+        await state.set_state(ConfigStates.waiting_for_api_key)
+    elif next_action == "setapi":
+        await message.answer(
+            "🌐 请发送 API Base URL：\n\n"
+            "例如：`https://api.openai.com/v1`\n\n"
+            "发送 /cancel 取消"
+        )
+        await state.set_state(ConfigStates.waiting_for_api_url)
+    elif next_action == "setmodel":
+        await message.answer(
+            "🧠 请发送 AI 模型名称：\n\n"
+            "例如：`gpt-4`、`gpt-3.5-turbo`\n\n"
+            "发送 /cancel 取消"
+        )
+        await state.set_state(ConfigStates.waiting_for_model)
+
+
+@router.message(ConfigStates.waiting_for_api_key)
+async def process_api_key(message: Message, state: FSMContext):
+    """保存 API Key"""
+    data = await state.get_data()
+    bot_id = data.get("config_bot_id")
+    if not bot_id:
+        await message.answer("❌ 出错了，请重新开始。")
+        await state.clear()
+        return
+
+    api_key = message.text.strip() if message.text else ""
+    if not api_key or len(api_key) < 10:
+        await message.answer("❌ API Key 格式不正确，请重新发送。")
+        return
+
+    mgr = get_bot_manager()
+    bot_config = await mgr.db.get_bot_config(bot_id)
+    if bot_config:
+        bot_config.ai_api_key = api_key
+        await mgr.db.update_bot_config(bot_config)
+        # 清除缓存的 OpenAI 客户端
+        _clear_ai_client_cache()
+        await message.answer("✅ API Key 已更新！")
+    else:
+        await message.answer("❌ Bot 配置不存在。")
+
+    await state.clear()
+
+
+@router.message(ConfigStates.waiting_for_api_url)
+async def process_api_url(message: Message, state: FSMContext):
+    """保存 API URL"""
+    data = await state.get_data()
+    bot_id = data.get("config_bot_id")
+    if not bot_id:
+        await message.answer("❌ 出错了，请重新开始。")
+        await state.clear()
+        return
+
+    url = message.text.strip() if message.text else ""
+    if not url.startswith("http"):
+        await message.answer("❌ URL 格式不正确，需要以 http 开头。")
+        return
+
+    mgr = get_bot_manager()
+    bot_config = await mgr.db.get_bot_config(bot_id)
+    if bot_config:
+        bot_config.ai_api_base_url = url
+        await mgr.db.update_bot_config(bot_config)
+        _clear_ai_client_cache()
+        await message.answer(f"✅ API URL 已更新为：`{url}`")
+    else:
+        await message.answer("❌ Bot 配置不存在。")
+
+    await state.clear()
+
+
+@router.message(ConfigStates.waiting_for_model)
+async def process_model(message: Message, state: FSMContext):
+    """保存 AI 模型"""
+    data = await state.get_data()
+    bot_id = data.get("config_bot_id")
+    if not bot_id:
+        await message.answer("❌ 出错了，请重新开始。")
+        await state.clear()
+        return
+
+    model = message.text.strip() if message.text else ""
+    if not model:
+        await message.answer("❌ 模型名称不能为空。")
+        return
+
+    mgr = get_bot_manager()
+    bot_config = await mgr.db.get_bot_config(bot_id)
+    if bot_config:
+        bot_config.ai_model = model
+        await mgr.db.update_bot_config(bot_config)
+        await message.answer(f"✅ AI 模型已更新为：`{model}`")
+    else:
+        await message.answer("❌ Bot 配置不存在。")
+
+    await state.clear()
+
+
+def _clear_ai_client_cache():
+    """清除 AI 客户端缓存，使新配置生效"""
+    try:
+        from plugins.ai import AIPlugin
+        AIPlugin._clients.clear()
+    except Exception:
+        pass
+
+
+# ==================== 管理员命令 ====================
+
+def _is_admin(user_id: int) -> bool:
+    """检查是否是管理员"""
+    return user_id in settings.admin_id_list
+
+
+@router.message(Command("admin"))
+async def cmd_admin(message: Message):
+    """管理员面板"""
+    if not _is_admin(message.from_user.id):
+        await message.answer("❌ 你不是管理员。")
+        return
+
+    mgr = get_bot_manager()
+    all_bots = await mgr.db.get_all_active_bots()
+
+    total_bots = len(all_bots)
+    total_users = len(set(b.owner_id for b in all_bots))
+
+    text = (
+        "🔧 **管理员面板**\n\n"
+        f"📊 统计：{total_bots} 个Bot / {total_users} 个用户\n\n"
+        "**命令：**\n"
+        "/admin_bots - 查看所有Bot列表\n"
+        "/admin_toggle_ai <bot_id> - 开关Bot的AI\n"
+        "/admin_set_key <bot_id> <key> - 为Bot设置API Key\n"
+    )
+    await message.answer(text)
+
+
+@router.message(Command("admin_bots"))
+async def cmd_admin_bots(message: Message):
+    """管理员：查看所有Bot"""
+    if not _is_admin(message.from_user.id):
+        return
+
+    mgr = get_bot_manager()
+    all_bots = await mgr.db.get_all_active_bots()
+
+    if not all_bots:
+        await message.answer("📭 没有任何Bot。")
+        return
+
+    text = "📋 **所有 Bot 列表：**\n\n"
+    for bot in all_bots:
+        bot_config = await mgr.db.get_bot_config(bot.id)
+        ai_status = "✅" if (bot_config and bot_config.ai_enabled) else "❌"
+        custom_key = "🔑" if (bot_config and bot_config.ai_api_key) else "🌐"
+        safe_uname = bot.bot_username.replace("_", "\\_")
+        text += (
+            f"ID:{bot.id} | {ai_status}AI | {custom_key} | "
+            f"@{safe_uname} (Owner: `{bot.owner_id}`)\n"
+        )
+
+    await message.answer(text)
+
+
+@router.message(Command("admin_toggle_ai"))
+async def cmd_admin_toggle_ai(message: Message):
+    """管理员：开关Bot的AI"""
+    if not _is_admin(message.from_user.id):
+        return
+
+    args = message.text.split(maxsplit=1)
+    if len(args) < 2:
+        await message.answer("用法：/admin_toggle_ai <bot_id>")
+        return
+
+    try:
+        bot_id = int(args[1].strip())
+    except ValueError:
+        await message.answer("❌ Bot ID 必须是数字。")
+        return
+
+    mgr = get_bot_manager()
+    bot_config = await mgr.db.get_bot_config(bot_id)
+    if not bot_config:
+        await message.answer(f"❌ Bot ID {bot_id} 没有配置。")
+        return
+
+    bot_config.ai_enabled = not bot_config.ai_enabled
+    await mgr.db.update_bot_config(bot_config)
+    status = "✅ 开启" if bot_config.ai_enabled else "❌ 关闭"
+    await message.answer(f"Bot ID {bot_id} 的 AI 已{status}")
