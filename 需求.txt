@@ -1,0 +1,542 @@
+需求
+好，这一步我直接帮你整理一份**可以当项目蓝图用的完整文档**（偏工程化 + 可落地 + 可扩展），你后面可以直接按这个开干，甚至当成 README / 设计文档用。
+
+---
+
+# 🧠 项目名称（暂定）
+
+**TG Bot 托管 & 私聊助手平台**
+
+基于 Telegram + aiogram
+
+---
+
+# 一、项目目标（Why）
+
+构建一个系统，让用户：
+
+* 提交自己的 bot（通过 BotFather 创建）
+* 在 TG 内完成配置
+* 拥有一个“私聊助手 bot”
+* 支持插件扩展能力（AI / 自动化 / 记忆等）
+
+---
+
+👉 本质定位：
+
+> 多租户 Bot 托管 + 插件化 AI 助手平台
+
+---
+
+# 二、核心功能需求（MVP）
+
+---
+
+## 2.1 主 Bot（控制入口）
+
+用户与“主 bot”交互完成所有操作：
+
+### 指令设计
+
+```
+/start         初始化
+/add_bot       添加 bot
+/my_bots       查看我的 bot
+/delete_bot    删除 bot
+/config        配置 bot
+/help
+```
+
+---
+
+## 2.2 Bot 接入流程
+
+### 流程图
+
+```
+用户 → /add_bot
+     → 输入 token
+     → 系统校验 token
+     → 创建 bot 实例
+     → 设置 webhook
+     → 完成接入
+```
+
+---
+
+### Token 校验（必须）
+
+调用 Telegram API：
+
+```
+getMe
+```
+
+校验：
+
+* token 是否合法
+* 是否为 bot
+* 获取 bot_id / username
+
+---
+
+## 2.3 私聊助手功能（核心）
+
+### 行为定义
+
+* 仅允许 owner 使用
+* 用户给 bot 发消息
+* bot 返回响应
+
+---
+
+### 安全限制（必须）
+
+```python
+if message.from_user.id != owner_id:
+    ignore
+```
+
+---
+
+## 2.4 Bot 生命周期管理
+
+支持：
+
+* 添加 bot
+* 启动 bot
+* 停止 bot
+* 删除 bot
+
+---
+
+# 三、插件系统设计（核心模块）
+
+---
+
+## 3.1 插件目标
+
+实现：
+
+* 功能解耦
+* 可扩展
+* 每个 bot 独立配置
+
+---
+
+## 3.2 插件接口定义
+
+```python
+class BasePlugin:
+    name = "base"
+    priority = 100
+
+    async def on_message(self, bot, message, context):
+        return PluginResult()
+```
+
+---
+
+## 3.3 插件执行机制（核心）
+
+```python
+for plugin in plugins:
+    result = await plugin.on_message(bot, message, context)
+
+    if result.stop:
+        break
+```
+
+---
+
+## 3.4 插件返回结构
+
+```python
+class PluginResult:
+    def __init__(self, stop=False):
+        self.stop = stop
+```
+
+---
+
+## 3.5 插件分类（建议）
+
+---
+
+### 1️⃣ 权限类
+
+* Owner 校验
+* 黑名单
+
+---
+
+### 2️⃣ 输入处理类
+
+* 命令解析
+* 关键词匹配
+
+---
+
+### 3️⃣ 逻辑处理类
+
+* AI 对话（接 OpenAI）
+* 数据处理
+* 记忆系统
+
+---
+
+### 4️⃣ 输出类
+
+* 回复用户
+* 格式化消息
+
+---
+
+# 四、核心插件设计（MVP 必备）
+
+---
+
+## 4.1 AuthPlugin（必须）
+
+```python
+if message.from_user.id != owner_id:
+    return stop=True
+```
+
+---
+
+## 4.2 CommandPlugin
+
+处理：
+
+```
+/start
+/help
+/config
+```
+
+---
+
+## 4.3 AIPlugin（核心价值）
+
+功能：
+
+* 接入 AI API
+* 生成回复
+
+---
+
+## 4.4 ReplyPlugin
+
+统一输出：
+
+```python
+await message.answer(text)
+```
+
+---
+
+# 五、系统架构设计
+
+---
+
+## 5.1 总体架构
+
+```
+                ┌────────────┐
+用户 ───────→ 主Bot（控制）
+                │
+                ▼
+         BotManager（核心）
+                │
+     ┌──────────┼──────────┐
+     ▼          ▼          ▼
+ 子Bot1      子Bot2      子Bot3
+```
+
+---
+
+## 5.2 Webhook 架构（推荐）
+
+```
+/webhook/{token_hash}
+```
+
+---
+
+### 请求流程：
+
+```
+Telegram → webhook → 分发 → 对应 bot → 插件链处理
+```
+
+---
+
+## 5.3 BotManager（核心类）
+
+```python
+class BotManager:
+    bots = {}
+    dispatchers = {}
+
+    async def add_bot(token):
+        # 创建 bot
+        # 创建 dispatcher
+        # 注册插件
+        # 设置 webhook
+```
+
+---
+
+# 六、数据结构设计
+
+---
+
+## 6.1 Bot 表
+
+```json
+{
+  "id": 1,
+  "owner_id": 123,
+  "bot_token": "加密存储",
+  "bot_username": "xxx_bot",
+  "status": "active",
+  "created_at": ""
+}
+```
+
+---
+
+## 6.2 Bot 配置
+
+```json
+{
+  "bot_id": 1,
+  "modules": {
+    "ai": true
+  }
+}
+```
+
+---
+
+## 6.3 插件配置（可扩展）
+
+```json
+{
+  "ai": {
+    "model": "gpt-4",
+    "temperature": 0.7
+  }
+}
+```
+
+---
+
+# 七、上下文 Context 设计（关键）
+
+---
+
+## 7.1 Context 结构
+
+```python
+context = {
+    "bot_id": ...,
+    "user_id": ...,
+    "memory": ...,
+    "config": ...
+}
+```
+
+---
+
+👉 用于：
+
+* 插件间通信
+* 状态共享
+
+---
+
+# 八、状态管理（FSM）
+
+---
+
+## 问题
+
+多 bot 会冲突
+
+---
+
+## 解决方案
+
+Redis Key：
+
+```
+fsm:{bot_id}:{user_id}
+```
+
+---
+
+# 九、安全设计
+
+---
+
+## 9.1 Token 安全
+
+* 加密存储（AES）
+* 不记录日志
+
+---
+
+## 9.2 webhook 安全
+
+```
+/webhook/{hash(token)}
+```
+
+---
+
+## 9.3 权限控制
+
+* 仅 owner 可操作 bot
+
+---
+
+# 十、性能优化设计
+
+---
+
+## 10.1 Webhook（必须）
+
+不要用 polling
+
+---
+
+## 10.2 懒加载
+
+* 首次请求才创建 bot
+
+---
+
+## 10.3 自动释放
+
+* 长时间不用 → 销毁实例
+
+---
+
+# 十一、项目结构（推荐）
+
+```
+project/
+├── main.py
+├── bot_manager/
+├── plugins/
+│   ├── base.py
+│   ├── auth.py
+│   ├── command.py
+│   ├── ai.py
+│   └── reply.py
+├── models/
+├── services/
+├── database/
+└── config/
+```
+
+---
+
+# 十二、开发阶段规划（建议）
+
+---
+
+## 阶段1（MVP）
+
+* 主 bot
+* 添加 bot
+* webhook
+* 私聊回复
+* 插件系统基础
+
+---
+
+## 阶段2
+
+* AI 插件
+* 配置系统
+* 多 bot 管理
+
+---
+
+## 阶段3
+
+* Redis
+* FSM
+* 插件扩展
+
+---
+
+## 阶段4
+
+* 限流
+* 商业化能力
+
+---
+
+# 十三、未来扩展（前瞻）
+
+---
+
+你这个系统可以进化为：
+
+### 👉 Telegram AI 平台
+
+用户可以：
+
+* 创建 AI bot
+* 自定义能力
+* 构建自动化助手
+
+---
+
+甚至做到：
+
+* 类似“AI Agent 平台”
+* 或 Bot SaaS
+
+---
+
+# 最后一段（给你最重要的建议）
+
+你这个项目成功与否，取决于3个点：
+
+---
+
+## ⭐ 1. 插件系统设计是否合理
+
+👉 决定扩展性
+
+---
+
+## ⭐ 2. BotManager 是否稳定
+
+👉 决定你能撑多少 bot
+
+---
+
+## ⭐ 3. 数据隔离是否干净
+
+👉 决定你会不会后期崩
+
+---
+
+---
+
+# 如果你下一步要继续
+
+我可以帮你做更深入的👇
+
+👉 类图 / 时序图（架构级）
+👉 插件系统完整代码骨架
+👉 BotManager 工业级实现
+👉 或直接：**第一版可运行项目**
+
+你现在这个设计，已经是“可以做成产品”的级别了，下一步就是工程落地。

@@ -1,0 +1,30 @@
+# 环境配置
+.env
+
+# 数据库
+data/
+*.db
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Docker
+docker-compose.override.yml
+
+# 日志
+*.log
+
+# OS
+.DS_Store
+Thumbs.db

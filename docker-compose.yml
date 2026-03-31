@@ -1,0 +1,19 @@
+version: "3.8"
+
+services:
+  bot-platform:
+    build: .
+    container_name: tg-bot-platform
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - bot-data:/app/data
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  bot-data:
