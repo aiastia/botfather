@@ -46,8 +46,11 @@ class AddBotStates(StatesGroup):
 # ==================== 辅助函数 ====================
 def get_bot_manager():
     """获取 BotManager 实例（从 main.py 注入）"""
-    from main import bot_manager
-    return bot_manager
+    import main as main_module
+    mgr = main_module.bot_manager
+    if mgr is None:
+        logger.error("bot_manager 未初始化！请确保程序已正确启动。")
+    return mgr
 
 
 # ==================== /start 命令 ====================
@@ -89,7 +92,7 @@ async def cmd_help(message: Message):
 
 
 # ==================== /add_bot 命令 ====================
-@router.message(Command("add_bot"))
+@router.message(Command("add_bot", "addbot"))
 async def cmd_add_bot(message: Message, state: FSMContext):
     """添加 Bot - 第一步：请求Token"""
     await message.answer(
@@ -184,7 +187,7 @@ async def process_add_bot_token(message: Message, state: FSMContext):
 
 
 # ==================== /my_bots 命令 ====================
-@router.message(Command("my_bots"))
+@router.message(Command("my_bots", "mybots"))
 async def cmd_my_bots(message: Message):
     """查看用户的所有Bot"""
     owner_id = message.from_user.id
@@ -208,7 +211,7 @@ async def cmd_my_bots(message: Message):
 
 
 # ==================== /delete_bot 命令 ====================
-@router.message(Command("delete_bot"))
+@router.message(Command("delete_bot", "deletebot"))
 async def cmd_delete_bot(message: Message, state: FSMContext):
     """删除Bot"""
     owner_id = message.from_user.id
@@ -238,7 +241,7 @@ async def cmd_cancel(message: Message, state: FSMContext):
 
 
 # ==================== /start_bot 命令 ====================
-@router.message(Command("start_bot"))
+@router.message(Command("start_bot", "startbot"))
 async def cmd_start_bot(message: Message):
     """启动Bot（提示使用说明）"""
     owner_id = message.from_user.id
@@ -260,7 +263,7 @@ async def cmd_start_bot(message: Message):
 
 
 # ==================== /stop_bot 命令 ====================
-@router.message(Command("stop_bot"))
+@router.message(Command("stop_bot", "stopbot"))
 async def cmd_stop_bot(message: Message):
     """停止Bot"""
     owner_id = message.from_user.id
