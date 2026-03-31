@@ -63,10 +63,10 @@ class AIPlugin(BasePlugin):
         max_tokens = bot_config.ai_max_tokens or settings.AI_MAX_TOKENS
         system_prompt = bot_config.ai_system_prompt or "你是一个友好的AI助手。"
 
-        if not api_key:
+        if not api_key or api_key.startswith("your_") or len(api_key) < 10:
             return PluginResult(
                 stop=True,
-                reply_text="❌ AI API Key 未配置。请联系管理员。",
+                reply_text="❌ AI API Key 未配置或无效。\n请联系管理员在 .env 中设置有效的 AI_API_KEY。",
                 handled=True,
             )
 

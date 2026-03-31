@@ -44,10 +44,10 @@ class ReplyPlugin(BasePlugin):
         try:
             await message.answer(reply_text, parse_mode="Markdown")
         except Exception as e:
-            # Markdown 解析失败时用纯文本重发
+            # Markdown 解析失败时用纯文本重发（必须显式关闭 parse_mode）
             logger.warning(f"Markdown 发送失败，切换纯文本: {e}")
             try:
-                await message.answer(reply_text)
+                await message.answer(reply_text, parse_mode=None)
             except Exception as e2:
                 logger.error(f"消息发送失败: {e2}")
 
