@@ -1,7 +1,4 @@
- """
-TG Bot 托管 & 私聊助手平台
-主入口文件
-"""
+
 import asyncio
 import hmac
 import logging
