@@ -129,15 +129,19 @@ async def process_add_bot_token(message: Message, state: FSMContext):
     # 校验Token（调用Telegram API）
     await message.answer("⏳ 正在校验 Token...")
 
+    test_bot = Bot(
+        token=token,
+        default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN),
+    )
     try:
-        test_bot = Bot(
-            token=token,
-            default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN),
-        )
         bot_info = await test_bot.get_me()
     except Exception as e:
         await message.answer(f"❌ Token 校验失败：{str(e)[:100]}\n\n请检查Token是否正确。")
         return
+    finally:
+        # 确保临时 Bot 的 session 被关闭
+        if not test_bot.session.closed:
+            await test_bot.session.close()
 
     # 检查是否已添加
     existing = await mgr.db.get_bot_by_token(token)
@@ -178,12 +182,14 @@ async def process_add_bot_token(message: Message, state: FSMContext):
     if settings.BOT_MODE == "webhook":
         await mgr.setup_webhook_for_bot(record.id)
 
+    safe_username = (bot_info.username or "").replace("_", "\\_")
+    safe_name = bot_info.first_name.replace("_", "\\_")
     await message.answer(
         f"✅ Bot 添加成功！\n\n"
-        f"🤖 名称：{bot_info.first_name}\n"
-        f"📌 用户名：@{bot_info.username}\n"
+        f"🤖 名称：{safe_name}\n"
+        f"📌 用户名：@{safe_username}\n"
         f"🆔 Bot ID：`{bot_info.id}`\n\n"
-        f"现在你可以直接向 @{bot_info.username} 发送消息来使用 AI 助手了！",
+        f"现在你可以直接向 @{safe_username} 发送消息来使用 AI 助手了！",
     )
     await state.clear()
     logger.info(f"用户 {owner_id} 添加了 Bot @{bot_info.username}")
@@ -204,9 +210,11 @@ async def cmd_my_bots(message: Message):
     text = "📋 **我的 Bot 列表：**\n\n"
     for i, bot in enumerate(bots, 1):
         status_emoji = "🟢" if bot.status == "active" else "🔴"
+        safe_uname = bot.bot_username.replace("_", "\\_")
+        safe_fname = bot.bot_firstname.replace("_", "\\_")
         text += (
-            f"{i}. {status_emoji} **{bot.bot_firstname}**\n"
-            f"   @{bot.bot_username} | ID: `{bot.id}`\n\n"
+            f"{i}. {status_emoji} **{safe_fname}**\n"
+            f"   @{safe_uname} | ID: `{bot.id}`\n\n"
         )
 
     text += f"共 {len(bots)} 个 Bot"
@@ -227,7 +235,9 @@ async def cmd_delete_bot(message: Message, state: FSMContext):
 
     text = "🗑️ **请回复要删除的 Bot 编号：**\n\n"
     for i, bot in enumerate(bots, 1):
-        text += f"{i}. @{bot.bot_username} ({bot.bot_firstname})\n"
+        safe_uname = bot.bot_username.replace("_", "\\_")
+        safe_fname = bot.bot_firstname.replace("_", "\\_")
+        text += f"{i}. @{safe_uname} ({safe_fname})\n"
 
     text += "\n发送 /cancel 取消"
     await message.answer(text)
@@ -259,7 +269,8 @@ async def cmd_start_bot(message: Message):
     for bot in bots:
         managed = mgr.get_all_bots().get(bot.id)
         status = "🟢 运行中" if managed else "🔴 未运行"
-        text += f"- @{bot.bot_username}: {status}\n"
+        safe_uname = bot.bot_username.replace("_", "\\_")
+        text += f"- @{safe_uname}: {status}\n"
 
     text += "\n💡 添加的 Bot 会自动启动，如需重启请先 /stop_bot 再重新添加。"
     await message.answer(text)
@@ -296,9 +307,10 @@ async def cmd_config(message: Message):
     text = "⚙️ **Bot 配置信息：**\n\n"
     for bot in bots:
         bot_config = await mgr.db.get_bot_config(bot.id)
+        safe_uname = bot.bot_username.replace("_", "\\_")
         if bot_config:
             text += (
-                f"🤖 **@{bot.bot_username}**\n"
+                f"🤖 **@{safe_uname}**\n"
                 f"   AI: {'✅ 开启' if bot_config.ai_enabled else '❌ 关闭'}\n"
                 f"   模型: `{bot_config.ai_model}`\n"
                 f"   温度: `{bot_config.ai_temperature}`\n"
@@ -306,7 +318,7 @@ async def cmd_config(message: Message):
                 f"   自定义API: {'✅' if bot_config.ai_api_base_url else '❌ 使用全局配置'}\n\n"
             )
         else:
-            text += f"🤖 @{bot.bot_username}: 暂无配置（使用全局默认）\n\n"
+            text += f"🤖 @{safe_uname}: 暂无配置（使用全局默认）\n\n"
 
     text += (
         "💡 全局 AI 配置（.env）：\n"
