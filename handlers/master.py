@@ -150,6 +150,10 @@ async def process_add_bot_token(message: Message, state: FSMContext):
     # 注册到BotManager
     await mgr.register_bot(record)
 
+    # Webhook 模式下自动设置 webhook
+    if settings.BOT_MODE == "webhook":
+        await mgr.setup_webhook_for_bot(record.id)
+
     await message.answer(
         f"✅ Bot 添加成功！\n\n"
         f"🤖 名称：{bot_info.first_name}\n"

@@ -1,0 +1,22 @@
+version: "3.8"
+
+services:
+  bot-platform:
+    build: .
+    container_name: tg-bot-platform
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - bot-data:/app/data
+    # 暴露 webhook 端口到宿主机，供外部 Nginx 反向代理
+    ports:
+      - "8080:8080"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  bot-data:

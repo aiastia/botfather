@@ -2,6 +2,7 @@
 Bot 管理器
 管理所有子Bot的生命周期：创建、启动、停止、删除
 每个子Bot有独立的插件链和消息处理器
+支持 Polling 和 Webhook 两种运行模式
 """
 import logging
 from typing import Dict, Optional
@@ -11,6 +12,7 @@ from aiogram.types import Message
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 
+from config.settings import settings
 from database.base import DatabaseBase
 from database.models import Bot as BotRecord, BotConfig
 from plugins.base import PluginChain, PluginContext
@@ -169,6 +171,48 @@ class BotManager:
                 logger.info(f"  OK @{bot_record.bot_username} 已加载")
             else:
                 logger.error(f"  FAIL @{bot_record.bot_username} 加载失败")
+
+    async def setup_webhook_for_bot(self, bot_id: int) -> bool:
+        """为指定子Bot设置 webhook（动态添加时使用）"""
+        managed = self._bots.get(bot_id)
+        if not managed:
+            logger.error(f"设置 webhook 失败: Bot ID={bot_id} 未注册")
+            return False
+
+        if settings.BOT_MODE != "webhook":
+            return True  # polling 模式无需设置
+
+        try:
+            sub_url = settings.sub_webhook_url_template.format(bot_id=bot_id)
+            secret = settings.WEBHOOK_SECRET or None
+            await managed.bot.set_webhook(
+                url=sub_url,
+                secret_token=secret,
+                drop_pending_updates=True,
+                allowed_updates=["message"],
+            )
+            logger.info(f"子Bot {bot_id} webhook 已设置: {sub_url}")
+            return True
+        except Exception as e:
+            logger.error(f"子Bot {bot_id} 设置 webhook 失败: {e}", exc_info=True)
+            return False
+
+    async def remove_webhook_for_bot(self, bot_id: int) -> bool:
+        """移除指定子Bot的 webhook"""
+        managed = self._bots.get(bot_id)
+        if not managed:
+            return False
+
+        if settings.BOT_MODE != "webhook":
+            return True
+
+        try:
+            await managed.bot.delete_webhook(drop_pending_updates=True)
+            logger.info(f"子Bot {bot_id} webhook 已移除")
+            return True
+        except Exception as e:
+            logger.error(f"子Bot {bot_id} 移除 webhook 失败: {e}", exc_info=True)
+            return False
 
     def get_all_dispatchers(self) -> Dict[int, Dispatcher]:
         """获取所有Bot的Dispatcher"""
