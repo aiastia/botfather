@@ -229,3 +229,12 @@ class SQLiteDatabase(DatabaseBase):
             (bot_id, user_id),
         )
         await self._db.commit()
+    async def update_bot_token(self, bot_id: int, new_token: str):
+        """更新Bot的Token（Managed Bot Token 变更时使用）"""
+        now = datetime.now().isoformat()
+        await self._db.execute(
+            "UPDATE bots SET bot_token = ?, updated_at = ? WHERE id = ?",
+            (new_token, now, bot_id),
+        )
+        await self._db.commit()
+        logger.info(f"Bot ID={bot_id} Token 已更新")

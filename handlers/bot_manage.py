@@ -1,10 +1,16 @@
 """
 Bot 管理命令处理器
 处理 Bot 的添加、查看、删除、启动、停止等操作
+支持 Managed Bots（Bot API 9.6）一键创建托管 Bot
 """
 import logging
-from aiogram import Router, Bot
-from aiogram.types import Message
+from aiogram import Router, Bot, F
+from aiogram.types import (
+    Message,
+    Update,
+    InlineKeyboardMarkup,
+    InlineKeyboardButton,
+)
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -22,6 +28,12 @@ router = Router()
 # ==================== FSM 状态定义 ====================
 class AddBotStates(StatesGroup):
     waiting_for_token = State()
+
+
+class CreateBotStates(StatesGroup):
+    """Managed Bot 创建流程"""
+    waiting_for_name = State()
+    waiting_for_username = State()
 
 
 def get_bot_manager():

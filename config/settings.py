@@ -16,6 +16,7 @@ class Settings:
 
     # ==================== 主Bot配置 ====================
     MASTER_BOT_TOKEN: str = os.getenv("MASTER_BOT_TOKEN", "")
+    MASTER_BOT_USERNAME: str = os.getenv("MASTER_BOT_USERNAME", "")  # 主Bot用户名，用于 Managed Bots 深度链接
 
     # ==================== 运行模式 ====================
     BOT_MODE: str = os.getenv("BOT_MODE", "polling")  # polling / webhook

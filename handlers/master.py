@@ -16,21 +16,26 @@ router = Router()
 from handlers.bot_manage import router as bot_manage_router
 from handlers.bot_config import router as bot_config_router
 from handlers.admin import router as admin_router
+from handlers.managed_bot import router as managed_bot_router
 
 router.include_router(bot_manage_router)
 router.include_router(bot_config_router)
 router.include_router(admin_router)
+router.include_router(managed_bot_router)
 
 
 # ==================== 启动时注册命令菜单 ====================
 async def register_bot_commands(bot: Bot):
     """向 Telegram 注册 Bot 命令菜单（聊天框中显示的命令提示）"""
     commands = [
-        BotCommand(command="add_bot", description="添加新 Bot"),
+        BotCommand(command="add_bot", description="添加新 Bot（手动Token）"),
+        BotCommand(command="create_bot", description="一键创建托管 Bot"),
         BotCommand(command="my_bots", description="查看我的 Bot"),
         BotCommand(command="delete_bot", description="删除 Bot"),
         BotCommand(command="start_bot", description="查看 Bot 启动状态"),
         BotCommand(command="stop_bot", description="停止 Bot"),
+        BotCommand(command="token_bot", description="获取托管 Bot Token"),
+        BotCommand(command="reset_token", description="重置托管 Bot Token"),
         BotCommand(command="config", description="查看 Bot 配置"),
         BotCommand(command="setkey", description="设置 AI API Key"),
         BotCommand(command="setapi", description="设置 AI API URL"),
@@ -50,7 +55,8 @@ async def cmd_start(message: Message):
         "我可以帮你管理多个 Telegram Bot，"
         "让每个 Bot 都变成你的 <b>AI 私聊助手</b>。\n\n"
         "📌 <b>快速开始：</b>\n"
-        "/add_bot - 添加一个新 Bot\n"
+        "/create_bot - 一键创建托管 Bot（推荐）\n"
+        "/add_bot - 手动添加已有 Bot\n"
         "/my_bots - 查看我的 Bot 列表\n"
         "/help - 查看完整帮助\n"
     )
@@ -63,20 +69,24 @@ async def cmd_help(message: Message):
     """帮助信息"""
     text = (
         "📖 <b>使用帮助</b>\n\n"
-        "<b>Bot 管理：</b>\n"
-        "/add_bot - 添加新 Bot\n"
+        "<b>🤖 托管 Bot 管理（Bot API 9.6 新功能）：</b>\n"
+        "/create_bot - 一键创建托管 Bot\n"
+        "/token_bot - 获取托管 Bot Token\n"
+        "/reset_token - 重置托管 Bot Token\n\n"
+        "<b>📦 传统 Bot 管理：</b>\n"
+        "/add_bot - 手动添加 Bot（需要 Token）\n"
         "/my_bots - 查看我的 Bot\n"
         "/delete_bot - 删除 Bot\n"
         "/start_bot - 查看 Bot 状态\n"
         "/stop_bot - 停止 Bot\n\n"
-        "<b>AI 配置（每个Bot可独立设置）：</b>\n"
+        "<b>🧠 AI 配置（每个Bot可独立设置）：</b>\n"
         "/config - 查看 Bot 配置\n"
         "/setkey - 设置 AI API Key\n"
         "/setapi - 设置 AI API 地址\n"
         "/setmodel - 设置 AI 模型\n\n"
         "<b>💡 提示：</b>\n"
-        "1. 先在 @BotFather 创建一个 Bot\n"
-        "2. 使用 /add_bot 将其添加到平台\n"
+        "1. 使用 /create_bot 可直接创建 Bot，无需去 @BotFather\n"
+        "2. 或先在 @BotFather 创建 Bot，再用 /add_bot 添加\n"
         "3. 用户发给 Bot 的消息会自动转发给你\n"
         "4. 你可以直接回复转发消息来回复用户\n"
     )

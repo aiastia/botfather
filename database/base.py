@@ -52,6 +52,11 @@ class DatabaseBase(ABC):
         """删除Bot（软删除）"""
         pass
 
+    @abstractmethod
+    async def update_bot_token(self, bot_id: int, new_token: str):
+        """更新Bot的Token（Managed Bot Token 变更时使用）"""
+        pass
+
     # ==================== BotConfig 操作 ====================
     @abstractmethod
     async def get_bot_config(self, bot_id: int) -> Optional[BotConfig]:
