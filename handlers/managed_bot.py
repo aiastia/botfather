@@ -3,8 +3,8 @@ Managed Bots 处理器（Bot API 9.6）
 支持一键创建托管 Bot、获取/重置 Token、自动处理 Managed Bot 更新事件
 """
 import logging
-from aiogram import Router, Bot, F
-from aiogram.types import Message, Update
+from aiogram import Router, Bot
+from aiogram.types import Message
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -268,17 +268,16 @@ async def process_reset_token(message: Message, state: FSMContext):
 
 
 # ==================== 处理 Managed Bot 更新事件 ====================
-@router.update(F.managed_bot)
-async def handle_managed_bot_update(update: Update):
+@router.managed_bot()
+async def handle_managed_bot_update(managed_bot_data):
     """
     处理托管 Bot 的更新事件
     当托管 Bot 被创建或 Token 变更时自动触发
     """
     mgr = get_bot_manager()
-    if not mgr or not update.managed_bot:
+    if not mgr:
         return
 
-    managed_bot_data = update.managed_bot
     logger.info(f"收到 Managed Bot 更新: {managed_bot_data}")
 
     try:
