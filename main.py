@@ -207,14 +207,16 @@ async def health_handler(request: web.Request) -> web.Response:
     })
 
 
-async def _set_webhook(bot: Bot, webhook_url: str, drop_pending: bool = False):
+async def _set_webhook(bot: Bot, webhook_url: str, drop_pending: bool = False, is_master: bool = False):
     """为单个 Bot 设置 webhook"""
     secret = settings.WEBHOOK_SECRET or None
+    # 主 Bot 需要接收 managed_bot 事件
+    allowed = ["message", "managed_bot"] if is_master else ["message"]
     result = await bot.set_webhook(
         url=webhook_url,
         secret_token=secret,
         drop_pending_updates=drop_pending,
-        allowed_updates=["message"],
+        allowed_updates=allowed,
     )
     return result
 
@@ -250,7 +252,7 @@ async def start_webhook(master_bot: Bot, master_dp: Dispatcher, mgr: BotManager)
     # 3. 设置所有 Bot 的 webhook
     master_webhook_url = settings.webhook_url
     logger.info(f"设置主Bot webhook: {master_webhook_url}")
-    await _set_webhook(master_bot, master_webhook_url, drop_pending=True)
+    await _set_webhook(master_bot, master_webhook_url, drop_pending=True, is_master=True)
 
     for bot_id, managed in mgr.get_all_bots().items():
         sub_url = settings.sub_webhook_url_template.format(bot_id=bot_id)

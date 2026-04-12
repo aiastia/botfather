@@ -33,6 +33,11 @@ class DatabaseBase(ABC):
         pass
 
     @abstractmethod
+    async def get_bot_by_telegram_id(self, telegram_bot_id: int) -> Optional[Bot]:
+        """根据Telegram Bot ID获取Bot记录"""
+        pass
+
+    @abstractmethod
     async def get_bots_by_owner(self, owner_id: int) -> List[Bot]:
         """获取用户的所有Bot"""
         pass
@@ -87,4 +92,17 @@ class DatabaseBase(ABC):
     @abstractmethod
     async def clear_conversations(self, bot_id: int, user_id: int):
         """清空对话历史"""
+        pass
+
+    # ==================== Pending Managed Bot 操作 ====================
+    async def set_pending_managed_bot(self, owner_id: int, bot_username: str, bot_name: str):
+        """存储待处理的 Managed Bot 信息（用户点击创建链接后临时保存）"""
+        pass
+
+    async def get_pending_managed_bot(self, owner_id: int, bot_username: str):
+        """获取待处理的 Managed Bot 信息"""
+        return None
+
+    async def delete_pending_managed_bot(self, owner_id: int, bot_username: str):
+        """删除待处理的 Managed Bot 信息"""
         pass

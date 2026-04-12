@@ -4,6 +4,7 @@ Bot 管理器
 每个子Bot有独立的插件链和消息处理器
 支持 Polling 和 Webhook 两种运行模式
 """
+import asyncio
 import logging
 from typing import Dict, Optional
 
@@ -241,6 +242,24 @@ class BotManager:
     def get_all_bots(self) -> Dict[int, ManagedBot]:
         """获取所有被管理的Bot"""
         return self._bots
+
+    async def start_bot_polling(self, bot_id: int) -> bool:
+        """动态启动一个子Bot的 polling（运行时新增Bot时使用）"""
+        managed = self._bots.get(bot_id)
+        if not managed:
+            logger.error(f"启动 polling 失败: Bot ID={bot_id} 未注册")
+            return False
+
+        try:
+            asyncio.create_task(
+                managed.dispatcher.start_polling(managed.bot, handle_signals=False),
+                name=f"sub_bot_{bot_id}",
+            )
+            logger.info(f"Bot ID={bot_id} polling 已动态启动")
+            return True
+        except Exception as e:
+            logger.error(f"Bot ID={bot_id} 启动 polling 失败: {e}", exc_info=True)
+            return False
 
     @property
     def active_count(self) -> int:

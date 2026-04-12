@@ -3,6 +3,8 @@ Managed Bots 处理器（Bot API 9.6）
 支持一键创建托管 Bot、获取/重置 Token、自动处理 Managed Bot 更新事件
 """
 import logging
+from urllib.parse import quote
+
 from aiogram import Router, Bot
 from aiogram.types import Message
 from aiogram.filters import Command
@@ -11,6 +13,7 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 
+from database.models import Bot as BotRecord, BotConfig
 from config.settings import settings
 
 logger = logging.getLogger(__name__)
@@ -107,8 +110,18 @@ async def process_create_bot_username(message: Message, state: FSMContext):
         return
 
     # 生成深度链接让用户通过 Telegram 创建 Managed Bot
+    # 官方格式: https://t.me/newbot/{manager_bot_username}/{new_username}?name={new_name}
+    # name 参数中的空格需要用 + 编码
+    encoded_name = quote(bot_name, safe="")
     create_link = (
-        f"https://t.me/newbot/{master_bot_username}/{username}?name={bot_name}"
+        f"https://t.me/newbot/{master_bot_username}/{username}?name={encoded_name}"
+    )
+
+    # 同时存储用户期望的 bot 信息，用于 managed_bot update 回来时匹配
+    await mgr.db.set_pending_managed_bot(
+        owner_id=message.from_user.id,
+        bot_username=username,
+        bot_name=bot_name,
     )
 
     await message.answer(
@@ -117,7 +130,7 @@ async def process_create_bot_username(message: Message, state: FSMContext):
         f"👤 用户名：@{username}\n\n"
         f"👇 <b>点击下方链接创建 Bot：</b>\n"
         f'<a href="{create_link}">点击创建 @{username}</a>\n\n'
-        f"创建完成后，Bot 会自动注册到本平台。",
+        f"创建完成后，Bot 会自动注册到本平台并启动。",
         disable_web_page_preview=True,
     )
     logger.info(f"用户 {message.from_user.id} 请求创建托管 Bot @{username}")
@@ -273,6 +286,11 @@ async def handle_managed_bot_update(managed_bot_data):
     """
     处理托管 Bot 的更新事件
     当托管 Bot 被创建或 Token 变更时自动触发
+
+    ManagedBotUpdated 包含:
+    - user: 创建者用户信息
+    - bot_user (alias: bot): 被创建的 Bot 信息
+    Token 需要通过 getManagedBotToken API 获取
     """
     mgr = get_bot_manager()
     if not mgr:
@@ -283,17 +301,133 @@ async def handle_managed_bot_update(managed_bot_data):
     try:
         from aiogram.types.managed_bot_updated import ManagedBotUpdated
 
-        if isinstance(managed_bot_data, ManagedBotUpdated):
-            bot_id = managed_bot_data.bot.id
-            new_token = getattr(managed_bot_data, "token", None)
+        if not isinstance(managed_bot_data, ManagedBotUpdated):
+            logger.warning(f"未知的事件类型: {type(managed_bot_data)}")
+            return
 
-            if new_token:
-                await mgr.db.update_bot_token(bot_id, new_token)
-                await mgr.unregister_bot(bot_id)
-                record = await mgr.db.get_bot(bot_id)
-                if record:
-                    record.bot_token = new_token
-                    await mgr.register_bot(record)
-                logger.info(f"Managed Bot {bot_id} Token 已自动更新")
+        # 获取创建者和 Bot 信息
+        creator = managed_bot_data.user
+        bot_info = managed_bot_data.bot_user  # alias="bot"
+        telegram_bot_id = bot_info.id
+        bot_username = bot_info.username or ""
+        bot_firstname = bot_info.first_name
+        creator_id = creator.id
+
+        logger.info(
+            f"Managed Bot 事件: @{bot_username} (ID={telegram_bot_id}) "
+            f"由用户 {creator_id} ({creator.first_name}) 创建/更新"
+        )
+
+        # 检查数据库中是否已存在该 Bot
+        existing = await mgr.db.get_bot_by_telegram_id(telegram_bot_id)
+
+        if existing:
+            # 已存在 - Token 变更场景，更新 Token
+            logger.info(f"Bot @{bot_username} 已存在 (数据库ID={existing.id})，更新 Token...")
+        else:
+            # 新创建 - 通过 getManagedBotToken 获取 Token
+            logger.info(f"新 Bot @{bot_username}，正在获取 Token...")
+
+        # 通过 Telegram API 获取 Managed Bot 的 Token
+        master_bot = Bot(
+            token=settings.MASTER_BOT_TOKEN,
+            default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+        )
+        from aiogram.methods.get_managed_bot_token import GetManagedBotToken
+
+        token_result = await master_bot(GetManagedBotToken(managed_bot_id=telegram_bot_id))
+        bot_token = token_result.token
+        logger.info(f"成功获取 Bot @{bot_username} 的 Token")
+
+        if existing:
+            # 更新已有记录的 Token
+            await mgr.db.update_bot_token(existing.id, bot_token)
+            # 先注销旧的 Bot 实例
+            await mgr.unregister_bot(existing.id)
+            # 重新加载记录
+            record = await mgr.db.get_bot(existing.id)
+            if record:
+                record.bot_token = bot_token
+                # 更新用户名和名称（可能变更）
+                record.bot_username = bot_username
+                record.bot_firstname = bot_firstname
+                await mgr.register_bot(record)
+
+                if settings.BOT_MODE == "polling":
+                    await mgr.start_bot_polling(record.id)
+                elif settings.BOT_MODE == "webhook":
+                    await mgr.setup_webhook_for_bot(record.id)
+
+            logger.info(f"Bot @{bot_username} Token 已更新并重新注册")
+        else:
+            # 创建新的数据库记录
+            # 尝试查找 pending 信息（用户通过 /create_bot 发起的请求）
+            pending = await mgr.db.get_pending_managed_bot(creator_id, bot_username)
+            owner_id = creator_id  # 默认 owner 就是创建者
+            display_name = bot_firstname
+
+            if pending:
+                display_name = pending.get("bot_name", bot_firstname)
+                logger.info(f"找到 pending 信息: name={display_name}")
+
+            record = BotRecord(
+                owner_id=owner_id,
+                bot_token=bot_token,
+                bot_id=telegram_bot_id,
+                bot_username=bot_username,
+                bot_firstname=display_name,
+                status="active",
+            )
+            record_id = await mgr.db.add_bot(record)
+            record.id = record_id
+
+            # 创建默认 Bot 配置
+            config = BotConfig(
+                bot_id=record_id,
+                ai_enabled=True,
+                ai_model=settings.AI_MODEL,
+                ai_temperature=settings.AI_TEMPERATURE,
+                ai_max_tokens=settings.AI_MAX_TOKENS,
+            )
+            await mgr.db.create_bot_config(config)
+
+            # 注册到 BotManager
+            success = await mgr.register_bot(record)
+            if success:
+                logger.info(f"Bot @{bot_username} 注册成功")
+
+                # 根据运行模式启动 Bot
+                if settings.BOT_MODE == "polling":
+                    await mgr.start_bot_polling(record.id)
+                elif settings.BOT_MODE == "webhook":
+                    await mgr.setup_webhook_for_bot(record.id)
+
+                # 清理 pending 信息
+                if pending:
+                    await mgr.db.delete_pending_managed_bot(creator_id, bot_username)
+
+                logger.info(f"🚀 Managed Bot @{bot_username} 已自动注册并启动！")
+            else:
+                logger.error(f"Bot @{bot_username} 注册失败")
+
+        # 通知创建者
+        try:
+            await master_bot.send_message(
+                chat_id=creator_id,
+                text=(
+                    f"✅ <b>托管 Bot 已就绪！</b>\n\n"
+                    f"🤖 名称：{bot_firstname}\n"
+                    f"📌 用户名：@{bot_username}\n\n"
+                    f"Bot 已自动注册到平台并开始运行。\n"
+                    f"使用 /my_bots 查看你的 Bot 列表。"
+                ),
+            )
+        except Exception as notify_err:
+            logger.warning(f"通知用户 {creator_id} 失败: {notify_err}")
+        finally:
+            # 关闭临时 master_bot session
+            if not master_bot.session.closed:
+                await master_bot.session.close()
+
     except Exception as e:
         logger.error(f"处理 Managed Bot 更新失败: {e}", exc_info=True)

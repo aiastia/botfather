@@ -73,6 +73,8 @@ class SQLiteDatabase(DatabaseBase):
     def __init__(self, db_path: str):
         self.db_path = db_path
         self._db: Optional[aiosqlite.Connection] = None
+        # 待处理的 Managed Bot 信息（内存临时存储）
+        self._pending_managed_bots: dict = {}  # key: (owner_id, bot_username)
 
     async def connect(self):
         """连接数据库"""
@@ -130,6 +132,16 @@ class SQLiteDatabase(DatabaseBase):
     async def get_bot_by_token(self, token: str) -> Optional[Bot]:
         async with self._db.execute(
             "SELECT * FROM bots WHERE bot_token = ? AND status != 'deleted'", (token,)
+        ) as cursor:
+            row = await cursor.fetchone()
+            if row:
+                return Bot.from_row(dict(row))
+        return None
+
+    async def get_bot_by_telegram_id(self, telegram_bot_id: int) -> Optional[Bot]:
+        """根据Telegram Bot ID获取Bot记录"""
+        async with self._db.execute(
+            "SELECT * FROM bots WHERE bot_id = ? AND status != 'deleted'", (telegram_bot_id,)
         ) as cursor:
             row = await cursor.fetchone()
             if row:
@@ -238,3 +250,21 @@ class SQLiteDatabase(DatabaseBase):
         )
         await self._db.commit()
         logger.info(f"Bot ID={bot_id} Token 已更新")
+
+    # ==================== Pending Managed Bot 操作 ====================
+    async def set_pending_managed_bot(self, owner_id: int, bot_username: str, bot_name: str):
+        """存储待处理的 Managed Bot 信息"""
+        self._pending_managed_bots[(owner_id, bot_username)] = {
+            "owner_id": owner_id,
+            "bot_username": bot_username,
+            "bot_name": bot_name,
+        }
+        logger.info(f"已存储 pending managed bot: owner={owner_id}, username={bot_username}")
+
+    async def get_pending_managed_bot(self, owner_id: int, bot_username: str):
+        """获取待处理的 Managed Bot 信息"""
+        return self._pending_managed_bots.get((owner_id, bot_username))
+
+    async def delete_pending_managed_bot(self, owner_id: int, bot_username: str):
+        """删除待处理的 Managed Bot 信息"""
+        self._pending_managed_bots.pop((owner_id, bot_username), None)
