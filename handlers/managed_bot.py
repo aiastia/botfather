@@ -188,11 +188,11 @@ async def process_token_bot(message: Message, state: FSMContext):
         from aiogram.methods.get_managed_bot_token import GetManagedBotToken
 
         result = await master_bot(
-            GetManagedBotToken(managed_bot_id=bot_data["bot_id"])
+            GetManagedBotToken(user_id=bot_data["bot_id"])
         )
         await message.answer(
             f"🔑 <b>Bot Token</b> - @{bot_data['bot_username']}:\n\n"
-            f"<code>{result.token}</code>\n\n"
+            f"<code>{result}</code>\n\n"
             f"⚠️ 请妥善保管 Token，不要泄露给他人！",
         )
     except Exception as e:
@@ -256,20 +256,20 @@ async def process_reset_token(message: Message, state: FSMContext):
         from aiogram.methods.replace_managed_bot_token import ReplaceManagedBotToken
 
         result = await master_bot(
-            ReplaceManagedBotToken(managed_bot_id=bot_data["bot_id"])
+            ReplaceManagedBotToken(user_id=bot_data["bot_id"])
         )
 
         # 更新数据库 Token 并重新注册 Bot
-        await mgr.db.update_bot_token(bot_data["id"], result.token)
+        await mgr.db.update_bot_token(bot_data["id"], result)
         await mgr.unregister_bot(bot_data["id"])
         updated_record = await mgr.db.get_bot(bot_data["id"])
         if updated_record:
-            updated_record.bot_token = result.token
+            updated_record.bot_token = result
             await mgr.register_bot(updated_record)
 
         await message.answer(
             f"✅ <b>Token 已重置</b> - @{bot_data['bot_username']}:\n\n"
-            f"<code>{result.token}</code>\n\n"
+            f"<code>{result}</code>\n\n"
             f"⚠️ 旧 Token 已失效，Bot 已自动重新注册。",
         )
     except Exception as e:
@@ -335,8 +335,8 @@ async def handle_managed_bot_update(managed_bot_data):
         )
         from aiogram.methods.get_managed_bot_token import GetManagedBotToken
 
-        token_result = await master_bot(GetManagedBotToken(managed_bot_id=telegram_bot_id))
-        bot_token = token_result.token
+        token_result = await master_bot(GetManagedBotToken(user_id=telegram_bot_id))
+        bot_token = token_result  # GetManagedBotToken 直接返回 str
         logger.info(f"成功获取 Bot @{bot_username} 的 Token")
 
         if existing:
