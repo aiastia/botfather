@@ -22,6 +22,7 @@ from plugins.command import CommandPlugin
 from plugins.ai import AIPlugin
 from plugins.reply import ReplyPlugin
 from plugins.forward import ForwardPlugin
+from plugins.keyword import KeywordPlugin
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +66,9 @@ class BotManager:
         chain = PluginChain()
         chain.register(AuthPlugin())       # 5  - 权限校验
         chain.register(CommandPlugin())     # 10 - 命令处理
+        keyword_plugin = KeywordPlugin()    # 20 - 关键词自动回复
+        keyword_plugin.db = self.db
+        chain.register(keyword_plugin)
         chain.register(ForwardPlugin())     # 30 - 消息转发给Bot主人
         chain.register(AIPlugin())          # 50 - AI对话
         reply_plugin = ReplyPlugin()        # 99 - 统一回复

@@ -4,7 +4,7 @@
 """
 from abc import ABC, abstractmethod
 from typing import Optional, List
-from .models import Bot, BotConfig, Conversation
+from .models import Bot, BotConfig, Conversation, KeywordReply
 
 
 class DatabaseBase(ABC):
@@ -92,6 +92,32 @@ class DatabaseBase(ABC):
     @abstractmethod
     async def clear_conversations(self, bot_id: int, user_id: int):
         """清空对话历史"""
+        pass
+
+    # ==================== KeywordReply 操作 ====================
+    @abstractmethod
+    async def add_keyword_reply(self, kw: KeywordReply) -> int:
+        """添加关键词回复规则"""
+        pass
+
+    @abstractmethod
+    async def get_keyword_replies(self, bot_id: int) -> list:
+        """获取Bot的所有关键词回复规则"""
+        pass
+
+    @abstractmethod
+    async def get_enabled_keyword_replies(self, bot_id: int) -> list:
+        """获取Bot的已启用关键词回复规则"""
+        pass
+
+    @abstractmethod
+    async def delete_keyword_reply(self, reply_id: int) -> bool:
+        """删除关键词回复规则"""
+        pass
+
+    @abstractmethod
+    async def toggle_keyword_reply(self, reply_id: int, enabled: bool) -> bool:
+        """启用/禁用关键词回复规则"""
         pass
 
     # ==================== Pending Managed Bot 操作 ====================

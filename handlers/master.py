@@ -17,11 +17,13 @@ from handlers.bot_manage import router as bot_manage_router
 from handlers.bot_config import router as bot_config_router
 from handlers.admin import router as admin_router
 from handlers.managed_bot import router as managed_bot_router
+from handlers.keyword import router as keyword_router
 
 router.include_router(bot_manage_router)
 router.include_router(bot_config_router)
 router.include_router(admin_router)
 router.include_router(managed_bot_router)
+router.include_router(keyword_router)
 
 
 # ==================== 启动时注册命令菜单 ====================
@@ -40,6 +42,10 @@ async def register_bot_commands(bot: Bot):
         BotCommand(command="setkey", description="设置 AI API Key"),
         BotCommand(command="setapi", description="设置 AI API URL"),
         BotCommand(command="setmodel", description="设置 AI 模型"),
+        BotCommand(command="add_keyword", description="添加关键词回复"),
+        BotCommand(command="keywords", description="查看关键词规则"),
+        BotCommand(command="del_keyword", description="删除关键词规则"),
+        BotCommand(command="toggle_keyword", description="启用/禁用关键词"),
         BotCommand(command="help", description="查看帮助"),
     ]
     await bot.set_my_commands(commands)
@@ -84,6 +90,11 @@ async def cmd_help(message: Message):
         "/setkey - 设置 AI API Key\n"
         "/setapi - 设置 AI API 地址\n"
         "/setmodel - 设置 AI 模型\n\n"
+        "<b>🔑 关键词自动回复：</b>\n"
+        "/add_keyword - 添加关键词回复规则\n"
+        "/keywords - 查看所有关键词规则\n"
+        "/del_keyword - 删除关键词规则\n"
+        "/toggle_keyword - 启用/禁用规则\n\n"
         "<b>💡 提示：</b>\n"
         "1. 使用 /create_bot 可直接创建 Bot，无需去 @BotFather\n"
         "2. 或先在 @BotFather 创建 Bot，再用 /add_bot 添加\n"

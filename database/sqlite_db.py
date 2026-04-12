@@ -9,7 +9,7 @@ from datetime import datetime
 import aiosqlite
 
 from .base import DatabaseBase
-from .models import Bot, BotConfig, Conversation
+from .models import Bot, BotConfig, Conversation, KeywordReply
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +66,23 @@ CREATE_INDEX_CONVERSATIONS = """
 CREATE INDEX IF NOT EXISTS idx_conversations_bot_user ON conversations(bot_id, user_id);
 """
 
+CREATE_KEYWORD_REPLIES_TABLE = """
+CREATE TABLE IF NOT EXISTS keyword_replies (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    bot_id INTEGER NOT NULL,
+    keyword TEXT NOT NULL,
+    reply_text TEXT NOT NULL,
+    is_regex INTEGER NOT NULL DEFAULT 0,
+    enabled INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (bot_id) REFERENCES bots(id)
+);
+"""
+
+CREATE_INDEX_KEYWORDS = """
+CREATE INDEX IF NOT EXISTS idx_keyword_replies_bot ON keyword_replies(bot_id);
+"""
+
 
 class SQLiteDatabase(DatabaseBase):
     """SQLite数据库实现"""
@@ -102,8 +119,10 @@ class SQLiteDatabase(DatabaseBase):
             CREATE_BOTS_TABLE
             + CREATE_BOT_CONFIGS_TABLE
             + CREATE_CONVERSATIONS_TABLE
+            + CREATE_KEYWORD_REPLIES_TABLE
             + CREATE_INDEX_OWNER
             + CREATE_INDEX_CONVERSATIONS
+            + CREATE_INDEX_KEYWORDS
         )
         await self._db.commit()
         logger.info("数据库表初始化完成")
@@ -268,3 +287,45 @@ class SQLiteDatabase(DatabaseBase):
     async def delete_pending_managed_bot(self, owner_id: int, bot_username: str):
         """删除待处理的 Managed Bot 信息"""
         self._pending_managed_bots.pop((owner_id, bot_username), None)
+
+    # ==================== KeywordReply 操作 ====================
+    async def add_keyword_reply(self, kw: KeywordReply) -> int:
+        now = datetime.now().isoformat()
+        async with self._db.execute(
+            """INSERT INTO keyword_replies (bot_id, keyword, reply_text, is_regex, enabled, created_at)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (kw.bot_id, kw.keyword, kw.reply_text, int(kw.is_regex), int(kw.enabled), now),
+        ) as cursor:
+            await self._db.commit()
+            return cursor.lastrowid
+
+    async def get_keyword_replies(self, bot_id: int) -> list:
+        async with self._db.execute(
+            "SELECT * FROM keyword_replies WHERE bot_id = ? ORDER BY created_at DESC",
+            (bot_id,),
+        ) as cursor:
+            rows = await cursor.fetchall()
+            return [KeywordReply.from_row(dict(row)) for row in rows]
+
+    async def get_enabled_keyword_replies(self, bot_id: int) -> list:
+        async with self._db.execute(
+            "SELECT * FROM keyword_replies WHERE bot_id = ? AND enabled = 1",
+            (bot_id,),
+        ) as cursor:
+            rows = await cursor.fetchall()
+            return [KeywordReply.from_row(dict(row)) for row in rows]
+
+    async def delete_keyword_reply(self, reply_id: int) -> bool:
+        cursor = await self._db.execute(
+            "DELETE FROM keyword_replies WHERE id = ?", (reply_id,)
+        )
+        await self._db.commit()
+        return cursor.rowcount > 0
+
+    async def toggle_keyword_reply(self, reply_id: int, enabled: bool) -> bool:
+        cursor = await self._db.execute(
+            "UPDATE keyword_replies SET enabled = ? WHERE id = ?",
+            (int(enabled), reply_id),
+        )
+        await self._db.commit()
+        return cursor.rowcount > 0

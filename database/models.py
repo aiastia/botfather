@@ -99,6 +99,30 @@ class BotConfig:
 
 
 @dataclass
+class KeywordReply:
+    """关键词自动回复模型"""
+    id: Optional[int] = None
+    bot_id: int = 0  # 关联Bot.id
+    keyword: str = ""  # 匹配关键词（不区分大小写）
+    reply_text: str = ""  # 回复内容
+    is_regex: bool = False  # 是否使用正则匹配
+    enabled: bool = True  # 是否启用
+    created_at: str = field(default_factory=lambda: datetime.now().isoformat())
+
+    @classmethod
+    def from_row(cls, row: dict) -> "KeywordReply":
+        return cls(
+            id=row["id"],
+            bot_id=row["bot_id"],
+            keyword=row["keyword"],
+            reply_text=row["reply_text"],
+            is_regex=bool(row["is_regex"]),
+            enabled=bool(row["enabled"]),
+            created_at=row["created_at"],
+        )
+
+
+@dataclass
 class Conversation:
     """对话记录模型"""
     id: Optional[int] = None
