@@ -30,6 +30,11 @@ class AddBotStates(StatesGroup):
     waiting_for_token = State()
 
 
+class DeleteBotStates(StatesGroup):
+    """Bot 删除流程"""
+    waiting_for_bot_select = State()
+
+
 class CreateBotStates(StatesGroup):
     """Managed Bot 创建流程"""
     waiting_for_name = State()
@@ -190,8 +195,49 @@ async def cmd_delete_bot(message: Message, state: FSMContext):
     text += "\n发送 /cancel 取消"
     await message.answer(text)
 
-    # 存储bot列表到状态
+    # 存储bot列表到状态并设置FSM状态
     await state.set_data({"delete_bots": [b.to_dict() for b in bots]})
+    await state.set_state(DeleteBotStates.waiting_for_bot_select)
+
+
+@router.message(DeleteBotStates.waiting_for_bot_select, Command("cancel"))
+async def cmd_delete_bot_cancel(message: Message, state: FSMContext):
+    """取消删除"""
+    await state.clear()
+    await message.answer("❌ 已取消删除 Bot。")
+
+
+@router.message(DeleteBotStates.waiting_for_bot_select)
+async def process_delete_bot(message: Message, state: FSMContext):
+    """处理用户选择的删除编号"""
+    data = await state.get_data()
+    bots_data = data.get("delete_bots", [])
+
+    try:
+        idx = int(message.text.strip()) - 1
+        if idx < 0 or idx >= len(bots_data):
+            raise ValueError
+    except (ValueError, TypeError):
+        await message.answer("❌ 请输入有效的编号，或发送 /cancel 取消。")
+        return
+
+    # 验证通过后才清除状态
+    await state.clear()
+    bot_data = bots_data[idx]
+    mgr = get_bot_manager()
+
+    # 从 BotManager 注销
+    await mgr.unregister_bot(bot_data["id"])
+
+    # 从数据库标记为删除
+    await mgr.db.delete_bot(bot_data["id"])
+
+    await message.answer(
+        f"✅ Bot @{bot_data['bot_username']} ({bot_data['bot_firstname']}) 已删除。"
+    )
+    logger.info(
+        f"用户 {message.from_user.id} 删除了 Bot @{bot_data['bot_username']}"
+    )
 
 
 # ==================== /start_bot 命令 ====================
